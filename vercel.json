@@ -1,1 +1,1 @@
-{"rewrites":[{"source":"/","destination":"/r23.html"}],"headers":[{"source":"/(.*)","headers":[{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},{"key":"X-TOVATI-Build","value":"R23-20260919"}]}]}
+{"buildCommand":"node build.mjs","outputDirectory":"public","headers":[{"source":"/(.*)","headers":[{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"},{"key":"X-TOVATI-Build","value":"R24-20260919"}]}]}
