@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
+const url="https://sdmntprukwest.oaiusercontent.com/files/00000000-0a18-8243-84b1-0c2bdabe8253/raw?se=2026-09-19T08%3A43%3A58Z&sp=r&sv=2026-02-06&sr=b&scid=5ee8053a-2e06-558a-bfb9-3f88da166dba&skoid=e32cbaad-a1eb-4299-9f16-1b364ab43781&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-18T20%3A11%3A33Z&ske=2026-09-19T20%3A11%3A33Z&sks=b&skv=2026-02-06&sig=jxZLBuXNh36QjINDEWegLmVyLMTflaOk/gu/0QQ%2BUH8%3D";
+const expected='27f2acb26fcfce8f16f5343963891af235a6c60ca1b6a8d9327e7d2c7aa40bdc';
+const r=await fetch(url,{cache:'no-store'});
+if(!r.ok) throw new Error('R24 download failed: '+r.status);
+const b=Buffer.from(await r.arrayBuffer());
+const got=crypto.createHash('sha256').update(b).digest('hex');
+if(got!==expected) throw new Error('R24 checksum mismatch: '+got);
+await fs.rm('public',{recursive:true,force:true});
+await fs.mkdir('public',{recursive:true});
+await fs.writeFile('public/index.html',b);
+await fs.writeFile('public/build.txt','TOVATI R24 '+got+'\n');
+console.log('TOVATI R24 ready',b.length,got);
