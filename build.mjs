@@ -1,14 +1,15 @@
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-const url="https://sdmntprnortheu.oaiusercontent.com/files/00000000-3aa0-81f4-a9da-01d48fe66db0/raw?se=2026-09-19T10%3A00%3A48Z&sp=r&sv=2026-02-06&sr=b&scid=c548559a-4ce7-5e04-9ca0-9eb74fa4d762&skoid=e32cbaad-a1eb-4299-9f16-1b364ab43781&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-19T05%3A38%3A34Z&ske=2026-09-20T05%3A38%3A34Z&sks=b&skv=2026-02-06&sig=TYHG%2BR3DfUo0tgAjyVHIaYcFt7ig%2BYU3Qyn77/OGPXs%3D";
-const expected='27f2acb26fcfce8f16f5343963891af235a6c60ca1b6a8d9327e7d2c7aa40bdc';
-const r=await fetch(url,{cache:'no-store'});
-if(!r.ok) throw new Error('R24 RESTORE download failed: '+r.status);
-const b=Buffer.from(await r.arrayBuffer());
-const got=crypto.createHash('sha256').update(b).digest('hex');
-if(got!==expected) throw new Error('R24 RESTORE checksum mismatch: '+got);
+
+const source=await fs.readFile('index.html','utf8');
+const tag='<script src="/cloud-sync.js?v=cloud-1"></script>';
+const html=source.includes(tag)?source:source.replace('</body>',tag+'\n</body>');
+
 await fs.rm('public',{recursive:true,force:true});
 await fs.mkdir('public',{recursive:true});
-await fs.writeFile('public/index.html',b);
-await fs.writeFile('public/build.txt','TOVATI R24 RESTORED '+got+'\n');
-console.log('TOVATI R24 RESTORED ready',b.length,got);
+await fs.writeFile('public/index.html',html,'utf8');
+await fs.copyFile('cloud-sync.js','public/cloud-sync.js');
+
+const hash=crypto.createHash('sha256').update(html).digest('hex');
+await fs.writeFile('public/build.txt','TOVATI CLOUD '+hash+'\n');
+console.log('TOVATI CLOUD ready',Buffer.byteLength(html),hash);
