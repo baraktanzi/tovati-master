@@ -126,4 +126,170 @@ document.getElementById('scrim').addEventListener('click',()=>drawer.classList.r
 document.querySelectorAll('.sheet a[href^="#"]').forEach(a=>a.addEventListener('click',()=>drawer.classList.remove('open')));
 document.getElementById('bellBtn').addEventListener('click',()=>alert('אין התראות חדשות. מאגר ההצעות עודכן היום, 24.09.2026.'));
 // Initial plan is generated only after the user taps the build button.
-</script></body></html>
+</script>
+<!-- MT_LIVE_DB_V1_START -->
+<script>
+(function(){
+  const SUPA_URL='https://txpdbljehqkntdxrpoof.supabase.co';
+  const SUPA_KEY='sb_publishable_ug2_CfqwXNVUoWaVtq-KQA_W7BtaTcS';
+  let liveRows=[];
+
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const safeUrl=(u)=>{
+    try { const x=new URL(u); return /^https?:$/.test(x.protocol)?x.href:'#'; } catch { return '#'; }
+  };
+  const regionMap={'חיפה והצפון':'צפון','צפון':'צפון','מרכז':'מרכז','ירושלים':'ירושלים','דרום':'דרום','כל הארץ':'כל הארץ'};
+  const moodLabels={romantic:'רומנטי',relax:'מנוחה',nature:'טבע',party:'מסיבות',music:'הופעות',family:'משפחה',food:'קולינריה'};
+
+  async function loadLiveRows(){
+    const fields='id,title,description,type,category,moods,region,city,venue,starts_at,ends_at,price_from,price_to,currency,booking_url,source_url,image_url,is_free,source_name,last_seen_at';
+    const url=SUPA_URL+'/rest/v1/mt_activities?select='+encodeURIComponent(fields)+'&is_active=eq.true&order=starts_at.asc.nullslast&limit=250';
+    const r=await fetch(url,{headers:{apikey:SUPA_KEY,Accept:'application/json'}});
+    if(!r.ok) throw new Error('DB '+r.status);
+    liveRows=await r.json();
+    return liveRows;
+  }
+
+  function filtered(){
+    const uiRegion=document.getElementById('region')?.value||'כל הארץ';
+    const region=regionMap[uiRegion]||uiRegion;
+    const from=document.getElementById('from')?.value||'';
+    const to=document.getElementById('to')?.value||'';
+    const budget=Math.max(0,Number(document.getElementById('budget')?.value)||0);
+    const fromD=from?new Date(from+'T00:00:00+03:00'):null;
+    const toD=to?new Date(to+'T23:59:59+03:00'):null;
+
+    return liveRows.filter(a=>{
+      if(region!=='כל הארץ' && a.region!==region && a.region!=='כל הארץ') return false;
+      if(Array.isArray(a.moods) && a.moods.length && current && !a.moods.includes(current)) return false;
+      if(a.starts_at){
+        const d=new Date(a.starts_at);
+        if(fromD && d<fromD) return false;
+        if(toD && d>toD) return false;
+      }
+      const p=Number(a.price_from||0);
+      if(budget>0 && p>budget) return false;
+      return true;
+    });
+  }
+
+  function choosePlan(rows){
+    const budget=Math.max(0,Number(document.getElementById('budget')?.value)||0);
+    const sorted=[...rows].sort((a,b)=>{
+      const ad=a.starts_at?new Date(a.starts_at).getTime():9e15;
+      const bd=b.starts_at?new Date(b.starts_at).getTime():9e15;
+      if(ad!==bd) return ad-bd;
+      return Number(a.price_from||0)-Number(b.price_from||0);
+    });
+    const out=[]; let spent=0;
+    const dayCount={};
+    for(const a of sorted){
+      const p=Number(a.price_from||0);
+      const day=a.starts_at?String(a.starts_at).slice(0,10):'any';
+      if(day!=='any' && (dayCount[day]||0)>=3) continue;
+      if(budget>0 && p>0 && spent+p>budget) continue;
+      out.push(a); spent+=p; dayCount[day]=(dayCount[day]||0)+1;
+      if(out.length>=6) break;
+    }
+    return {out,spent};
+  }
+
+  function fmtDate(v){
+    if(!v) return 'לבחירת מועד';
+    try{return new Intl.DateTimeFormat('he-IL',{day:'2-digit',month:'2-digit'}).format(new Date(v));}catch{return '';}
+  }
+  function fmtTime(v){
+    if(!v) return '—';
+    try{return new Intl.DateTimeFormat('he-IL',{hour:'2-digit',minute:'2-digit'}).format(new Date(v));}catch{return '—';}
+  }
+  function fmtPrice(a){
+    if(a.is_free) return 'חינם';
+    const p=Number(a.price_from||0);
+    return p?'מ־₪'+Math.round(p).toLocaleString('he-IL'):'בדיקת מחיר';
+  }
+
+  async function renderLivePlan(){
+    const plan=document.getElementById('plan');
+    const stops=document.getElementById('stops');
+    const note=document.getElementById('planNote');
+    if(!plan||!stops) return;
+    plan.classList.add('show');
+    stops.innerHTML='<div class="empty">טוען הצעות מהמאגר הארצי…</div>';
+    plan.scrollIntoView({behavior:'smooth',block:'start'});
+    try{
+      if(!liveRows.length) await loadLiveRows();
+      const rows=filtered();
+      const picked=choosePlan(rows);
+      const uiRegion=document.getElementById('region')?.value||'כל הארץ';
+      document.getElementById('planTitle').textContent=(moodLabels[current]||'בילוי')+' · '+uiRegion;
+      document.getElementById('total').textContent=picked.spent?'כ־₪'+Math.round(picked.spent).toLocaleString('he-IL'):'חינם / מחיר באתר';
+      note.textContent='נמצאו '+rows.length+' הצעות מתאימות במאגר הארצי. התוכנית הורכבה עכשיו מנתוני השרת.';
+      if(!picked.out.length){
+        stops.innerHTML='<div class="empty">לא נמצאו כרגע הצעות מתאימות לתאריכים ולמסננים שבחרת. נסה להרחיב את התאריכים או לבחור „כל הארץ”.</div>';
+        return;
+      }
+      stops.innerHTML=picked.out.map(a=>{
+        const book=safeUrl(a.booking_url||a.source_url);
+        const source=safeUrl(a.source_url||a.booking_url);
+        return '<article class="stop">'+
+          '<div class="when">'+esc(fmtTime(a.starts_at))+'<span class="date">'+esc(fmtDate(a.starts_at))+'</span></div>'+
+          '<div><h3>'+esc(a.title)+'</h3>'+
+          '<p>'+esc((a.description||'').slice(0,360))+'</p>'+
+          '<div class="tags"><span class="tag">'+esc(a.category||a.type||'בילוי')+'</span>'+
+          '<span class="tag">'+esc(fmtPrice(a))+'</span><span class="tag">'+esc(a.region||'כל הארץ')+(a.city?' · '+esc(a.city):'')+'</span></div>'+
+          '<div class="actions"><a class="book" href="'+book+'" target="_blank" rel="noopener">הזמן / פרטים ↗</a>'+
+          '<a class="source" href="'+source+'" target="_blank" rel="noopener">מקור</a></div></div></article>';
+      }).join('');
+    }catch(e){
+      console.error(e);
+      note.textContent='לא הצלחנו להגיע למאגר כרגע.';
+      stops.innerHTML='<div class="empty">שגיאת חיבור זמנית למאגר. נסה שוב בעוד רגע.</div>';
+    }
+  }
+
+  function refreshLiveGrid(){
+    const grid=document.querySelector('#realOffers .live-grid');
+    if(!grid||!liveRows.length) return;
+    const uiRegion=document.getElementById('region')?.value||'כל הארץ';
+    const region=regionMap[uiRegion]||uiRegion;
+    const rows=liveRows.filter(a=>region==='כל הארץ'||a.region===region||a.region==='כל הארץ')
+      .sort((a,b)=>(Number(a.price_from||0)||9e9)-(Number(b.price_from||0)||9e9))
+      .slice(0,8);
+    if(!rows.length) return;
+    grid.innerHTML=rows.map(a=>{
+      const href=safeUrl(a.booking_url||a.source_url);
+      const img=safeUrl(a.image_url);
+      return '<a class="live-card" href="'+href+'" target="_blank" rel="noopener">'+
+        (img!=='#'?'<img src="'+img+'" alt="">':'')+
+        '<div class="live-shade"></div><div class="live-body">'+
+        '<span class="verified">✓ מהמאגר החי</span><strong>'+esc(a.title)+'</strong>'+
+        '<small>'+esc((a.city||a.region||'ישראל')+' · '+(a.source_name||'מקור מאומת'))+'</small>'+
+        '<div class="live-price">'+esc(fmtPrice(a))+'</div></div></a>';
+    }).join('');
+  }
+
+  const build=document.getElementById('buildBtn');
+  if(build) build.addEventListener('click',(e)=>{e.preventDefault();e.stopImmediatePropagation();renderLivePlan();},true);
+  const navPlan=document.getElementById('navPlan');
+  if(navPlan) navPlan.addEventListener('click',(e)=>{e.preventDefault();e.stopImmediatePropagation();renderLivePlan();},true);
+
+  document.querySelectorAll('.region-btn').forEach(b=>b.addEventListener('click',()=>setTimeout(refreshLiveGrid,0)));
+  document.getElementById('region')?.addEventListener('change',()=>setTimeout(refreshLiveGrid,0));
+
+  loadLiveRows().then(rows=>{
+    const regions={};
+    rows.forEach(a=>regions[a.region]=(regions[a.region]||0)+1);
+    const pill=document.querySelector('.live-pill');
+    if(pill){
+      pill.innerHTML='<i></i> מאגר ארצי חי · '+rows.length+' הצעות';
+    }
+    const status=document.querySelector('.status');
+    if(status){
+      status.innerHTML='<strong>● מאגר ארצי מחובר</strong><br>צפון '+(regions['צפון']||0)+' · מרכז '+(regions['מרכז']||0)+' · ירושלים '+(regions['ירושלים']||0)+' · דרום '+(regions['דרום']||0)+' · ארצי '+(regions['כל הארץ']||0);
+    }
+    refreshLiveGrid();
+  }).catch(err=>console.error('Mood Travel live DB',err));
+})();
+</script>
+<!-- MT_LIVE_DB_V1_END -->
+</body></html>
