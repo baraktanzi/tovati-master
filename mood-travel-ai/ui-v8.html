@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10192c"><meta name="mood-version" content="8.0.0">
+<meta name="description" content="Mood Travel AI — בילויים, הופעות וחופשות לפי הסגנון שלכם. חיפוש ארצי, תוכנית אישית וקישורים לספקים.">
+<title>Mood Travel AI | V8</title>
+<style>__MOOD_CSS__</style>
+</head>
+<body>
+<header class="topbar"><button class="icon" data-action="menu" aria-label="פתיחת תפריט">☰</button><button class="brand" data-view="home" aria-label="Mood Travel AI — בית"><img id="brandImage" alt="Mood Travel AI"></button><button class="icon" data-action="status" aria-label="מצב המאגר">↻</button></header>
+<main class="app">
+<section class="view" id="view-home">
+ <div class="hero"><img id="heroImage" alt="תמונת אווירה לבילוי"><div class="hero-shade"></div><div class="hero-copy"><div class="eyebrow">YOUR MOOD. YOUR NEXT ADVENTURE.</div><h1>פחות לחפש.<br><span>יותר לחוות.</span></h1><p>ערב ספונטני, יום בטבע או חופשה לשניים.<br>בוחרים מה בא לכם — ומתחילים לגלות.</p><button class="primary" data-action="planner">בואו נבנה תוכנית <span>✦</span></button></div><small class="hero-caption">תמונת אווירה</small></div>
+ <div class="sync-line"><span class="status-dot"></span><span id="connectionText" role="status">מתחבר למאגר הארצי…</span><button class="text-btn" data-action="refresh">רענון</button></div>
+ <div class="section-head"><div><span class="eyebrow">מה מתאים לכם?</span><h2>לכל מצב רוח, חוויה</h2></div><button class="text-btn" data-action="filters">כל הסגנונות ←</button></div>
+ <div id="moodTiles" class="mood-tiles"></div>
+ <button class="search-launch" data-view="explore"><span>⌕</span><span>חיפוש מקום, הופעה או חוויה</span><span>←</span></button>
+ <div class="section-head"><div><span class="eyebrow">בוחרים ויוצאים</span><h2>לגלות משהו חדש</h2></div><button class="text-btn" data-view="explore">לכל התוצאות ←</button></div>
+ <div id="homeCards" class="card-grid"></div>
+ <button class="night-banner" data-view="night"><div><span class="eyebrow">AFTER DARK</span><h2>הלילה עוד צעיר.</h2><p>מסיבות, מועדונים והופעות</p></div><span>↗</span></button>
+ <p class="footnote">פרטי הפעילויות מגיעים ממאגר מקורות. זמינות ומחיר סופי נבדקים אצל הספק; תמונות אווירה אינן תמונות של המקום.</p>
+</section>
+<section class="view" id="view-explore" hidden>
+ <div class="page-heading"><span class="eyebrow">DISCOVER</span><h1>מה עושים הפעם?</h1><p>כל הארץ, הרבה סגנונות, בחירה אחת שלכם.</p></div>
+ <div class="search-bar"><input id="searchInput" type="search" placeholder="חיפוש לפי שם, מקום או עיר" aria-label="חיפוש"><button class="icon" data-action="filters" aria-label="מסנני חיפוש">☷</button></div>
+ <div id="filterSummary" class="filter-summary"></div>
+ <div class="result-head"><span id="resultCount" role="status"></span><select id="sortInput" aria-label="סדר התוצאות"><option value="date">לפי מועד</option><option value="price">מחיר עולה</option><option value="name">לפי שם</option></select></div>
+ <div id="exploreCards" class="card-grid"></div><button id="moreButton" class="secondary wide" data-action="more" hidden>הצגת תוצאות נוספות</button>
+</section>
+<section class="view" id="view-night" hidden>
+ <div class="page-heading"><span class="eyebrow">AFTER DARK</span><h1>מה קורה הלילה?</h1><p>אירועים מתוארכים בנפרד ממקומות שצריך לבדוק.</p></div>
+ <div class="night-controls"><label>לילה בתאריך<input id="nightDate" type="date"></label><button class="secondary" data-action="filters">אזור וסינון ☷</button></div>
+ <div id="nightChips" class="chips"></div><p id="nightSummary" class="muted"></p><div id="nightCards" class="card-grid"></div>
+ <div class="section-head"><div><h2>מקומות להכיר</h2><p class="muted">ללא אישור פתיחה או אירוע בלילה שנבחר</p></div></div><div id="venueCards" class="card-grid"></div>
+</section>
+<section class="view" id="view-plan" hidden>
+ <div class="page-heading"><span class="eyebrow">MAKE IT A PLAN</span><h1>התוכנית שלכם</h1><p>באותה עיר, לפי התאריכים וההעדפות.</p></div>
+ <div class="plan-toolbar"><button class="primary" data-action="planner">בניית תוכנית ✦</button><button class="secondary" data-action="share-plan">שיתוף</button></div>
+ <div id="planContent"></div>
+</section>
+<section class="view" id="view-saved" hidden>
+ <div class="page-heading"><span class="eyebrow">YOUR COLLECTION</span><h1>שווה לשמור</h1><p>כל מה שתפס לכם את העין. נשמר בדפדפן הזה.</p></div><div id="savedCards" class="card-grid"></div>
+</section>
+</main>
+<nav class="bottom" aria-label="ניווט ראשי">
+ <button data-view="home" aria-current="page"><span>⌂</span>בית</button><button data-view="explore"><span>⌕</span>לגלות</button><button data-view="night"><span>☾</span>הלילה</button><button data-view="plan"><span>✦</span>תוכנית</button><button data-view="saved"><span>♡</span>שמורים</button>
+</nav>
+<dialog id="filterDialog" class="sheet"><form id="filterForm">
+ <div class="dialog-head"><div><span class="eyebrow">בדיוק בשבילכם</span><h2 id="filterTitle">מה מחפשים?</h2></div><button type="button" class="icon" data-close aria-label="סגירה">×</button></div>
+ <div class="form-grid">
+  <label class="full">איזה סגנון?<select id="moodInput"></select></label>
+  <label>מתאריך<input id="fromInput" type="date" required></label><label>עד תאריך<input id="toInput" type="date" required></label>
+  <label>אזור<select id="regionInput"><option value="all">כל הארץ</option><option>צפון</option><option>מרכז</option><option>ירושלים</option><option>דרום</option></select></label>
+  <label>עיר יעד<select id="cityInput"><option value="">כל הערים באזור</option></select></label>
+  <label>גיל<input id="ageInput" type="number" min="0" max="120" placeholder="לא חובה"></label>
+  <label>תקציב ₪<input id="budgetInput" type="number" min="0" step="1" placeholder="ללא הגבלה"></label>
+  <label class="check full"><input id="knownInput" type="checkbox"> רק הצעות עם מחיר שפורסם</label>
+ </div>
+ <p class="footnote">0 ₪ מציג רק פעילויות שסומנו כחינמיות. מחיר חסר אינו חינם. יחידת המחיר יכולה להיות אדם, זוג, חדר או חבילה.</p>
+ <p id="filterError" class="error" role="alert"></p>
+ <div class="sheet-actions"><button type="button" class="secondary" data-action="reset-filters">איפוס</button><button class="primary" id="applyFilters" type="submit">הצגת תוצאות</button></div>
+</form></dialog>
+<dialog id="detailDialog" class="detail-dialog"><button class="icon close-detail" data-close aria-label="סגירה">×</button><div id="detailContent"></div></dialog>
+<dialog id="menuDialog" class="sheet"><div class="dialog-head"><h2>Mood Travel AI</h2><button class="icon" data-close aria-label="סגירה">×</button></div><div class="menu-buttons"><button data-view="explore">⌕ כל ההצעות</button><button data-action="planner">✦ הרכבת תוכנית</button><button data-view="night">☾ בילוי לילה</button><button data-view="saved">♡ המקומות ששמרתם</button><button data-action="status">↻ מקורות ועדכונים</button></div><p class="footnote">V8 · אתר ציבורי · שמירה מקומית בדפדפן.<br>התכנון מבוסס כללי התאמה. לא מבוצעת הזמנה או רכישה אוטומטית.</p></dialog>
+<dialog id="statusDialog" class="sheet"><div class="dialog-head"><h2>החיבור למאגר</h2><button class="icon" data-close aria-label="סגירה">×</button></div><div id="statusContent"></div><button class="primary wide" data-action="refresh">רענון מהמאגר</button></dialog>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<script>const MOOD_ASSETS=__MOOD_ASSETS__;</script>
+<script>__MOOD_JS__</script>
+</body></html>

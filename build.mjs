@@ -16,3 +16,4 @@ await fs.mkdir('public/mood-travel-ai',{recursive:true});
 await fs.copyFile('mood-travel-ai/index.html','public/mood-travel-ai/index.html');
 console.log('Mood Travel AI public subpath ready');
 console.log('TOVATI exact R24 master ready',Buffer.byteLength(source),hash);
+await import('./mood-travel-ai/build-v8.mjs');
