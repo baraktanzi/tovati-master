@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import {upgrade} from './upgrade-v9.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 const dir=path.dirname(fileURLToPath(import.meta.url));
@@ -10,10 +11,11 @@ const logo=original.match(/<img\b[^>]*class="logo"[^>]*src="([^"]+)"/i)||origina
 if(!logo)throw new Error('Selected Mood logo missing.');
 assets.logo=logo[1];
 for(const key of ['romantic','relax','nature','party','music','family','food','logo'])if(!/^data:image\/(?:webp|png|jpeg);base64,/.test(assets[key]||''))throw new Error('Invalid asset: '+key);
-const [template,css,js]=await Promise.all(['ui-v8.html','style-v8.css','app-v8.js'].map(n=>fs.readFile(path.join(dir,n),'utf8')));
+let [template,css,js]=await Promise.all(['ui-v8.html','style-v8.css','app-v8.js'].map(n=>fs.readFile(path.join(dir,n),'utf8')));
+({template,css,js}=await upgrade(template,css,js,assets));
 const html=template.replace('__MOOD_CSS__',()=>css).replace('__MOOD_JS__',()=>js).replace('__MOOD_ASSETS__',()=>JSON.stringify(assets).replace(/</g,'\\u003c'));
 if(/__MOOD_/.test(html))throw new Error('Incomplete Mood build');
 const dest=path.join(process.cwd(),'public','mood-travel-ai');
 await fs.mkdir(dest,{recursive:true});
 await fs.writeFile(path.join(dest,'index.html'),html,'utf8');
-console.log('Mood Travel AI V8',Buffer.byteLength(html),'bytes');
+console.log('Mood Travel AI V9 Couples',Buffer.byteLength(html),'bytes');
