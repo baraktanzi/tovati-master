@@ -11,6 +11,7 @@ import { AnnualPlansController } from './modules/annual-plans/controller.js';
 import { UnitOverhaulsController } from './modules/unit-overhauls/controller.js';
 import { ManagementDashboardController } from './modules/management-dashboard/controller.js';
 import { PersonalAreaController } from './modules/personal-area/controller.js';
+import { WorkExecutionController } from './modules/work-execution/controller.js';
 
 const source=getDataSource();
 const repository=new WorkRepository(source);
@@ -32,7 +33,8 @@ const api={
     annualPlans:new AnnualPlansController(source),
     unitOverhauls:new UnitOverhaulsController(source),
     managementDashboard:new ManagementDashboardController(source),
-    personalArea:new PersonalAreaController(source)
+    personalArea:new PersonalAreaController(source),
+    workExecution:new WorkExecutionController(source)
   },
   legacy:{
     bridge:window.TOVATI_R24_BRIDGE||null,
