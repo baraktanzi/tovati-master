@@ -83,6 +83,47 @@ window.TOVATI_R24_BRIDGE=Object.freeze({
   collection:name=>legacyCollection(String(name)),
   workItems:normalizedWorkItems,
   assignments:legacyAssignments,
+
+  setOperationalPriority(ref,value,targetDate=''){
+    if(typeof Store==='undefined'||typeof Store?.set!=='function') throw new Error('R24 Store is unavailable');
+    Store.set(String(ref),{operational:String(value||'')});
+    if(targetDate!==undefined) Store.set(String(ref),{operationalTargetDate:String(targetDate||'')});
+    try{if(typeof refreshMainScheduling==='function') refreshMainScheduling();}catch{}
+    return normalizedWorkItems().find(x=>x.id===String(ref))||null;
+  },
+
+  saveAssignment(input,id=''){
+    if(!window.TOVATI_PILOT?.saveAssignment) throw new Error('R24 assignment API is unavailable');
+    return clone(window.TOVATI_PILOT.saveAssignment({
+      workRef:String(input.workRef||input.work_item_id||''),
+      date:String(input.date||''),
+      start:String(input.start||''),
+      end:String(input.end||''),
+      workerIds:Array.isArray(input.workerIds)?input.workerIds:[],
+      note:String(input.note||'')
+    },String(id||'')));
+  },
+
+  cancelAssignment(id,reason='בוטל במודול תכנון'){
+    if(!window.TOVATI_PILOT?.cancelAssignment) throw new Error('R24 assignment API is unavailable');
+    return window.TOVATI_PILOT.cancelAssignment(String(id),String(reason));
+  },
+
+  setAssignmentStatus(id,status,confirmed=false){
+    if(!window.TOVATI_PILOT?.setAssignmentStatus) throw new Error('R24 assignment API is unavailable');
+    return window.TOVATI_PILOT.setAssignmentStatus(String(id),String(status),Boolean(confirmed));
+  },
+
+  completeWork(input){
+    if(!window.TOVATI_PILOT?.completeWork) throw new Error('R24 completion API is unavailable');
+    return window.TOVATI_PILOT.completeWork(input);
+  },
+
+  routeWork(input){
+    if(!window.TOVATI_PILOT?.saveReview) throw new Error('R24 routing API is unavailable');
+    return clone(window.TOVATI_PILOT.saveReview(input));
+  },
+
   subscribe(handler){listeners.add(handler);return()=>listeners.delete(handler);}
 });
 window.dispatchEvent(new CustomEvent('tovati:r24-bridge-ready'));
