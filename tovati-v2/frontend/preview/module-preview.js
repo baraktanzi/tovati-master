@@ -38,10 +38,98 @@ function objectRows(value={}){
     .join('');
 }
 
+async function openExecutionForm(root,api,item,kind,onSaved){
+  let dialog=document.getElementById('v2ExecutionDialog');
+  if(!dialog){
+    dialog=document.createElement('dialog');
+    dialog.id='v2ExecutionDialog';
+    dialog.className='v2-detail-dialog';
+    document.body.appendChild(dialog);
+  }
+
+  const currentUser=api.legacy?.user?.()||null;
+  const today=new Date().toISOString().slice(0,10);
+  let body='';
+
+  if(kind==='delay'){
+    body=`<form id="v2ExecForm" class="v2-exec-form">
+      <label><span>סוג עיכוב</span><select name="type" required><option value="">בחר</option><option>ממתין להיתר</option><option>ממתין לחלפים</option><option>ממתין לקבלן</option><option>ממתין לציוד</option><option>ממתין לתפעול</option><option>אחר</option></select></label>
+      <label><span>אחראי למעקב</span><input name="owner" value="${esc(currentUser?.name||currentUser?.display_name||'')}" required></label>
+      <label><span>תאריך מעקב</span><input name="due" type="date" value="${today}" required></label>
+      <label class="wide"><span>פירוט</span><textarea name="details" required maxlength="1500"></textarea></label>
+      <div class="v2-planner-sheet-actions wide"><button type="button" data-cancel>ביטול</button><button type="submit">שמירת עיכוב</button></div>
+    </form>`;
+  }
+
+  if(kind==='time'){
+    const users=await api.data.list('users',{offset:0,limit:200,active:true});
+    body=`<form id="v2ExecForm" class="v2-exec-form">
+      <label><span>עובד</span><select name="user" required><option value="">בחר עובד</option>${users.items.map(u=>`<option value="${esc(u.id)}" ${currentUser&&String(currentUser.id)===String(u.id)?'selected':''}>${esc(u.name||u.display_name||u.id)}</option>`).join('')}</select></label>
+      <label><span>תאריך</span><input name="date" type="date" value="${today}" required></label>
+      <label><span>שעות</span><input name="hours" type="number" min="0.25" max="24" step="0.25" value="1" required></label>
+      <label class="wide"><span>תיאור ביצוע</span><textarea name="description" required maxlength="1500"></textarea></label>
+      <div class="v2-planner-sheet-actions wide"><button type="button" data-cancel>ביטול</button><button type="submit">שמירת שעות</button></div>
+    </form>`;
+  }
+
+  if(kind==='complete'){
+    body=`<form id="v2ExecForm" class="v2-exec-form">
+      <label class="wide"><span>סיכום העבודה</span><textarea name="summary" required minlength="10" maxlength="2500"></textarea></label>
+      <label class="wide v2-check"><input name="permit" type="checkbox" required><span>בדקתי את הטיפול בהיתר ובתנאי העבודה</span></label>
+      <div class="v2-planner-sheet-actions wide"><button type="button" data-cancel>ביטול</button><button type="submit">סגירת העבודה</button></div>
+    </form>`;
+  }
+
+  dialog.innerHTML=`<header class="v2-detail-head"><h2>${kind==='delay'?'רישום עיכוב':kind==='time'?'דיווח שעות':'סגירת עבודה'}</h2><button type="button" data-cancel>×</button></header><div class="v2-detail-body">${body}</div>`;
+  dialog.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=()=>dialog.close());
+  dialog.querySelector('#v2ExecForm').onsubmit=async event=>{
+    event.preventDefault();
+    showError(root,'');
+    const fd=new FormData(event.currentTarget);
+    const submit=event.currentTarget.querySelector('[type=submit]');
+    submit.disabled=true;
+    try{
+      if(kind==='delay'){
+        await api.modules.workExecution.saveDelay({
+          workItemId:item.id,
+          type:fd.get('type'),
+          owner:fd.get('owner'),
+          details:fd.get('details'),
+          followUpDate:fd.get('due')
+        });
+      }
+      if(kind==='time'){
+        await api.modules.workExecution.saveTimeEntry({
+          workItemId:item.id,
+          userId:fd.get('user'),
+          date:fd.get('date'),
+          hours:fd.get('hours'),
+          description:fd.get('description')
+        });
+      }
+      if(kind==='complete'){
+        await api.modules.workExecution.completeWork({
+          workItemId:item.id,
+          userId:currentUser?.id||'',
+          summary:fd.get('summary'),
+          permitChecked:fd.get('permit')==='on'
+        });
+      }
+      dialog.close();
+      await onSaved?.();
+    }catch(e){showError(root,e);}
+    finally{if(submit.isConnected)submit.disabled=false;}
+  };
+  dialog.showModal();
+}
+
 async function openLocalWorkDetail(root,api,item,initial='status'){
   showError(root,'');
   try{
-    const card=await api.work.loadWorkCard(item.id);
+    const [card,execution]=await Promise.all([
+      api.work.loadWorkCard(item.id),
+      api.modules.workExecution?.load(item.id).catch(()=>null)
+    ]);
     if(!card)throw new Error('כרטיס העבודה לא נמצא');
 
     let dialog=document.getElementById('v2WorkDetailDialog');
@@ -62,15 +150,33 @@ async function openLocalWorkDetail(root,api,item,initial='status'){
 
     const render=()=>{
       const pane=panes[active];
+      const execSummary=active==='status'&&execution?`
+        <section class="v2-exec-summary">
+          <div><b>${execution.delays?.filter(x=>(x.state||x.status)==='open').length||0}</b><span>עיכובים פתוחים</span></div>
+          <div><b>${execution.timeEntries?.filter(x=>!x.voided).reduce((s,x)=>s+Number(x.hours||0),0)||0}</b><span>שעות מדווחות</span></div>
+          <div><b>${execution.assignments?.filter(x=>x.status!=='cancelled'&&x.status!=='done').length||0}</b><span>שיבוצים פעילים</span></div>
+        </section>
+        <div class="v2-exec-actions">
+          <button type="button" data-exec="delay">רישום עיכוב</button>
+          <button type="button" data-exec="time">דיווח שעות</button>
+          <button type="button" data-exec="complete" ${execution.closure?.completed?'disabled':''}>סגירת עבודה</button>
+        </div>`:'' ;
+
       dialog.innerHTML=`<header class="v2-detail-head"><h2>${esc(card.work?.title||card.work?.description||'כרטיס עבודה')}</h2><button type="button" data-close>×</button></header>
       <div class="v2-detail-body">
         <div class="v2-detail-tabs">${Object.entries(panes).map(([key,p])=>`<button type="button" data-tab="${key}" class="${active===key?'active':''}" ${p.value?'':'disabled'}>${p.label}</button>`).join('')}</div>
         <div class="v2-detail-grid">${pane.value?objectRows(pane.value):'<div class="v2-empty">אין נתונים מקושרים</div>'}</div>
+        ${execSummary}
       </div>`;
       dialog.querySelector('[data-close]').onclick=()=>dialog.close();
       dialog.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{
         active=button.dataset.tab;
         render();
+      });
+      dialog.querySelectorAll('[data-exec]').forEach(button=>button.onclick=async()=>{
+        const kind=button.dataset.exec;
+        dialog.close();
+        await openExecutionForm(root,api,item,kind,()=>openLocalWorkDetail(root,api,item,'status'));
       });
     };
 
