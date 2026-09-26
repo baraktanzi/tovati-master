@@ -1,10 +1,12 @@
 import { WorkRepository } from '../../core/repositories/work-repository.js';
 import { normalizePermit, normalizeJsa, normalizePtp, permitValidity, safetyPackageStatus } from './domain.js';
+import { CAPABILITIES, requireCapability } from '../../core/authorization.js';
 
 export class PermitSafetyController{
-  constructor(repository=new WorkRepository()){this.repository=repository;}
+  constructor(repository=new WorkRepository(),options={}){this.repository=repository;this.getCurrentUser=options.getCurrentUser||(()=>window.TOVATI_R24_BRIDGE?.currentUser?.()||null);}
 
   async loadPermits(filters={}){
+    requireCapability(this.getCurrentUser(),CAPABILITIES.PERMITS_READ,'אין הרשאה לצפייה בהיתרים');
     const offset=Math.max(0,Number(filters.offset||0));
     const limit=Math.max(1,Number(filters.limit||50));
     const page=await this.repository.listPermits({
@@ -21,6 +23,7 @@ export class PermitSafetyController{
   }
 
   async loadPackage({permitId,workItemId=''}){
+    requireCapability(this.getCurrentUser(),CAPABILITIES.PERMITS_READ,'אין הרשאה לצפייה בחבילת הבטיחות');
     const permit=normalizePermit(await this.repository.source.get('permits',permitId)||{id:permitId});
     const [jsaPage,ptpPage]=await Promise.all([
       this.repository.listJsa({offset:0,limit:50,permitId,workItemId}),
