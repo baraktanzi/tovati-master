@@ -5,16 +5,19 @@ export class PermitSafetyController{
   constructor(repository=new WorkRepository()){this.repository=repository;}
 
   async loadPermits(filters={}){
-    const page=await this.repository.listPermits({offset:0,limit:200});
-    const q=String(filters.search||'').trim().toLowerCase();
-    const rows=page.items.map(normalizePermit)
-      .filter(x=>!filters.status||x.status===filters.status)
-      .filter(x=>!q||[x.id,x.orderId,x.title,x.status].join(' ').toLowerCase().includes(q))
-      .map(x=>({...x,validity:permitValidity(x)}));
-
     const offset=Math.max(0,Number(filters.offset||0));
     const limit=Math.max(1,Number(filters.limit||50));
-    return {items:rows.slice(offset,offset+limit),total:rows.length,offset,limit};
+    const page=await this.repository.listPermits({
+      offset,
+      limit,
+      status:filters.status||'',
+      search:filters.search||''
+    });
+
+    return {
+      ...page,
+      items:(page.items||[]).map(normalizePermit).map(x=>({...x,validity:permitValidity(x)}))
+    };
   }
 
   async loadPackage({permitId,workItemId=''}){
