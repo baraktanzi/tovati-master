@@ -1,22 +1,44 @@
 import { WorkRepository } from '../../core/repositories/work-repository.js';
+import { TOVATI_CONFIG } from '../../config/runtime-config.js';
 import { assignmentsForDay, planningCandidates, buildAssignment } from './planning.js';
+
+async function allPages(loader,query={}){
+  const rows=[];
+  let offset=0;
+  while(true){
+    const page=await loader({...query,offset,limit:TOVATI_CONFIG.maxPageSize});
+    rows.push(...(page.items||[]));
+    offset+=page.items?.length||0;
+    if(!page.items?.length||offset>=page.total)break;
+  }
+  return rows;
+}
 
 export class DepartmentPlanningController{
   constructor(repository=new WorkRepository()){this.repository=repository;}
 
   async loadDay({date,departmentId='',section='',workerId='',search='',offset=0,limit=50}={}){
-    const [workPage,assignmentPage]=await Promise.all([
-      this.repository.listWorkItems({offset:0,limit:200,departmentId,section,search,includeClosed:'0'}),
-      this.repository.listAssignments({offset:0,limit:200,date,departmentId,section,workerId})
+    if(TOVATI_CONFIG.mode==='company-server'&&typeof this.repository.source.request==='function'){
+      const params=new URLSearchParams({date,departmentId,section,workerId,search,offset:String(offset),limit:String(limit)});
+      return this.repository.source.request('/planning/day?'+params.toString());
+    }
+
+    const [items,assignmentsRaw]=await Promise.all([
+      allPages(q=>this.repository.listWorkItems(q),{departmentId,section,search,includeClosed:'0'}),
+      allPages(q=>this.repository.listAssignments(q),{date,departmentId,section,workerId})
     ]);
 
-    const assignments=assignmentsForDay(assignmentPage.items,date,{departmentId,section,workerId});
-    const candidates=planningCandidates(workPage.items,assignments,date,{departmentId,section,search});
+    const assignments=assignmentsForDay(assignmentsRaw,date,{departmentId,section,workerId});
+    const candidates=planningCandidates(items,assignments,date,{departmentId,section,search});
+    const from=Math.max(0,Number(offset));
+    const size=Math.max(1,Number(limit));
     return {
       date,
       assignments,
-      candidates:candidates.slice(Number(offset),Number(offset)+Number(limit)),
-      candidateTotal:candidates.length
+      candidates:candidates.slice(from,from+size),
+      candidateTotal:candidates.length,
+      offset:from,
+      limit:size
     };
   }
 
