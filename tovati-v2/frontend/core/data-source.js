@@ -116,6 +116,26 @@ export class LegacyR24DataSource{
         .filter(x=>query.active==null?true:Boolean(x.active)===Boolean(query.active));
     }
 
+    if(collection==='pm-tasks'){
+      rows=rows.filter(x=>query.departmentId?String(x.department_id||'')===String(query.departmentId):true)
+        .filter(x=>query.month?String(x.due_at||'').slice(0,7)===String(query.month):true);
+    }
+
+    if(collection==='permits'){
+      rows=rows.filter(x=>query.status?String(x.status||'')===String(query.status):true)
+        .filter(x=>query.orderId?String(x.order_id||'')===String(query.orderId):true)
+        .filter(x=>!q||[x.id,x.order_id,x.title,x.status].join(' ').toLowerCase().includes(q));
+    }
+
+    if(collection==='personal-tasks'){
+      rows=rows.filter(x=>query.assigneeId?String(x.assigneeId||x.assignee_id||'')===String(query.assigneeId):true)
+        .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+    }
+
+    if(collection==='alerts'){
+      rows=rows.filter(x=>query.status?String(x.status||'')===String(query.status):true);
+    }
+
     return rows;
   }
 
