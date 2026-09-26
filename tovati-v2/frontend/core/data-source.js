@@ -81,6 +81,25 @@ export class LocalDataSource{
   }
 }
 
+export class LegacyR24DataSource{
+  #rows(collection){
+    const bridge=window.TOVATI_R24_BRIDGE;
+    return bridge?.collection?.(collection)||[];
+  }
+  async list(collection,{offset=0,limit=TOVATI_CONFIG.pageSize}={}){
+    const rows=this.#rows(collection);
+    offset=Math.max(0,Number(offset));
+    limit=Math.min(Math.max(1,Number(limit)),TOVATI_CONFIG.maxPageSize);
+    return {items:rows.slice(offset,offset+limit),total:rows.length,offset,limit};
+  }
+  async get(collection,id){
+    return this.#rows(collection).find(x=>String(x.id??x.ref??x.order??x['הזמנה']??'')===String(id))||null;
+  }
+  async upsert(){throw new Error('R24 compatibility data source is read-only');}
+  async bulkUpsert(){throw new Error('R24 compatibility data source is read-only');}
+  async remove(){throw new Error('R24 compatibility data source is read-only');}
+}
+
 export class HttpDataSource{
   constructor(){this.base=TOVATI_CONFIG.apiBase.replace(/\/$/,'');}
 
@@ -137,9 +156,7 @@ export class HttpDataSource{
 let singleton;
 export function getDataSource(){
   if(!singleton){
-    singleton=TOVATI_CONFIG.mode==='company-server'
-      ? new HttpDataSource()
-      : new LocalDataSource();
+    singleton=TOVATI_CONFIG.mode==='company-server'\n      ? new HttpDataSource()\n      : TOVATI_CONFIG.mode==='legacy-local'\n        ? new LegacyR24DataSource()\n        : new LocalDataSource();
   }
   return singleton;
 }
