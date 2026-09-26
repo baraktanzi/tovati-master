@@ -106,6 +106,21 @@ function legacyCollection(name){
     if(name==='orders') return clone(typeof DATASETS!=='undefined'?DATASETS?.orders||[]:[])||[];
     if(name==='permits') return normalizedPermits();
     if(name==='notifications') return clone(typeof DATASETS!=='undefined'?DATASETS?.notifications||[]:[])||[];
+    if(name==='personal-tasks') return clone(typeof db!=='undefined'?db?.personalTasks||[]:[])||[];
+    if(name==='alerts'){
+      try{
+        const rows=typeof rules==='function'?rules():[];
+        return clone(rows.map(x=>({
+          id:String(x.id||''),
+          title:String(x.title||''),
+          message:String(x.detail||x.message||''),
+          status:x.seen?'read':'open',
+          severity:String(x.severity||'info'),
+          work_item_id:String(x.workRef||'')
+        })))||[];
+      }catch{return [];}
+    }
+    if(['annual-plans','overhaul-projects','overhaul-tasks','jsa','ptp'].includes(name)) return [];
     return [];
   }catch{return [];}
 }
