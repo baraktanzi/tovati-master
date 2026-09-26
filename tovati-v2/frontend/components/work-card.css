@@ -1,5 +1,5 @@
 .tv2-work-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-items:start}
-.twc-card{--accent:#8ba1ad;position:relative;background:#fff;border:1px solid #bfd3de;border-radius:16px;box-shadow:0 5px 16px rgba(18,63,98,.09);overflow:hidden;min-width:0;contain:layout paint style}
+.twc-card{--accent:#8ba1ad;position:relative;background:#fff;border:1px solid #bfd3de;border-radius:16px;box-shadow:0 5px 16px rgba(18,63,98,.09);overflow:hidden;min-width:0;contain:layout paint style;content-visibility:auto;contain-intrinsic-size:270px}
 .twc-card.op-immediate{--accent:#cf2e2e;background:linear-gradient(135deg,#fff 66%,#fff0f0)}
 .twc-card.op-today{--accent:#e58a22;background:linear-gradient(135deg,#fff 66%,#fff6e8)}
 .twc-card.op-tomorrow{--accent:#279c63;background:linear-gradient(135deg,#fff 66%,#eaf9f1)}
