@@ -38,9 +38,13 @@ for(const worker of snapshot.state.workers||[]){
 snapshot.state.pmOrders=[];
 
 const slimJson=JSON.stringify(snapshot);
+const pmSeedScript='window.TOVATI_PM_SEED='+safeJsJson(pmSeed)+';\\n';
+const workerPhotosScript='window.TOVATI_WORKER_PHOTOS='+safeJsJson(workerPhotos)+';\\n';
+const pmSeedHash=crypto.createHash('sha256').update(pmSeedScript).digest('hex').slice(0,12);
+const workerPhotosHash=crypto.createHash('sha256').update(workerPhotosScript).digest('hex').slice(0,12);
 const seedTag=
-  '<script src="/architecture-v2/data/pm-seed.js?v=seed-1"></script>\n'+
-  '<script src="/architecture-v2/data/worker-photos.js?v=seed-1"></script>';
+  '<script src="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'"></script>\\n'+
+  '<script src="/architecture-v2/data/worker-photos.js?v='+workerPhotosHash+'"></script>';
 
 source=source.slice(0,embedded.contentStart)+slimJson+source.slice(embedded.end);
 const snapshotClose=source.indexOf('</script>',embedded.contentStart);
@@ -52,10 +56,10 @@ if(!source.includes(oldEmbeddedFn))throw new Error('embeddedSnapshot implementat
 source=source.replace(oldEmbeddedFn,newEmbeddedFn);
 
 const preload=
-  '<link rel="preload" href="/architecture-v2/data/pm-seed.js?v=seed-1" as="script">\n'+
-  '<link rel="preload" href="/architecture-v2/data/worker-photos.js?v=seed-1" as="script">';
+  '<link rel="preload" href="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'" as="script">\\n'+
+  '<link rel="preload" href="/architecture-v2/data/worker-photos.js?v='+workerPhotosHash+'" as="script">';
 if(!source.includes('rel="preload" href="/architecture-v2/data/pm-seed.js')){
-  source=source.replace('</head>',preload+'\n</head>');
+  source=source.replace('</head>',preload+'\\n</head>');
 }
 
 const compatTag='<script src="/architecture-v2/frontend/compat/r24-bridge.js?v=2"></script>';
@@ -74,16 +78,8 @@ await fs.mkdir('public/architecture-v2',{recursive:true});
 await fs.cp('tovati-v2','public/architecture-v2',{recursive:true});
 await fs.mkdir('public/architecture-v2/data',{recursive:true});
 
-await fs.writeFile(
-  'public/architecture-v2/data/pm-seed.js',
-  'window.TOVATI_PM_SEED='+safeJsJson(pmSeed)+';\n',
-  'utf8'
-);
-await fs.writeFile(
-  'public/architecture-v2/data/worker-photos.js',
-  'window.TOVATI_WORKER_PHOTOS='+safeJsJson(workerPhotos)+';\n',
-  'utf8'
-);
+await fs.writeFile('public/architecture-v2/data/pm-seed.js',pmSeedScript,'utf8');
+await fs.writeFile('public/architecture-v2/data/worker-photos.js',workerPhotosScript,'utf8');
 
 const hash=crypto.createHash('sha256').update(source).digest('hex');
 const originalSeedBytes=Buffer.byteLength(embedded.content);
@@ -97,7 +93,9 @@ await fs.writeFile(
     'EMBEDDED_SEED_BEFORE='+originalSeedBytes,
     'EMBEDDED_SEED_AFTER='+slimSeedBytes,
     'PM_ROWS='+pmSeed.length,
-    'WORKER_PHOTOS='+Object.keys(workerPhotos).length
+    'PM_SEED_HASH='+pmSeedHash,
+    'WORKER_PHOTOS='+Object.keys(workerPhotos).length,
+    'WORKER_PHOTOS_HASH='+workerPhotosHash
   ].join('\n')+'\n'
 );
 
