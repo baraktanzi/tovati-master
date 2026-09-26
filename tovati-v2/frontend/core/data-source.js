@@ -86,15 +86,52 @@ export class LegacyR24DataSource{
     const bridge=window.TOVATI_R24_BRIDGE;
     return bridge?.collection?.(collection)||[];
   }
-  async list(collection,{offset=0,limit=TOVATI_CONFIG.pageSize}={}){
-    const rows=this.#rows(collection);
-    offset=Math.max(0,Number(offset));
-    limit=Math.min(Math.max(1,Number(limit)),TOVATI_CONFIG.maxPageSize);
+
+  #filtered(collection,query={}){
+    let rows=this.#rows(collection);
+    const q=String(query.search||'').trim().toLowerCase();
+
+    if(collection==='work-items'){
+      rows=rows.filter(x=>query.departmentId?String(x.department_id||'')===String(query.departmentId):true)
+        .filter(x=>query.section?String(x.section||'')===String(query.section):true)
+        .filter(x=>query.operationalPriority?String(x.operational_priority||'')===String(query.operationalPriority):true)
+        .filter(x=>query.status?String(x.status||'')===String(query.status):true)
+        .filter(x=>String(query.includeClosed)==='1'?true:!['done','closed','בוצע','סגור'].includes(String(x.status||'').toLowerCase()))
+        .filter(x=>!q||[
+          x.title,x.notification_id,x.order_id,x.permit_id,x.section
+        ].join(' ').toLowerCase().includes(q));
+    }
+
+    if(collection==='assignments'){
+      rows=rows.filter(x=>query.date?String(x.date||'')===String(query.date):true)
+        .filter(x=>query.departmentId?String(x.departmentId||x.snapshot?.departmentId||'')===String(query.departmentId):true)
+        .filter(x=>query.section?String(x.section||x.snapshot?.section||'')===String(query.section):true)
+        .filter(x=>query.workerId?(x.workerIds||[]).includes(query.workerId):true)
+        .filter(x=>x.status!=='cancelled');
+    }
+
+    if(collection==='users'){
+      rows=rows.filter(x=>query.departmentId?String(x.dept||x.department_id||'')===String(query.departmentId):true)
+        .filter(x=>query.section?String(x.section||'')===String(query.section):true)
+        .filter(x=>query.active==null?true:Boolean(x.active)===Boolean(query.active));
+    }
+
+    return rows;
+  }
+
+  async list(collection,query={}){
+    const rows=this.#filtered(collection,query);
+    let offset=Math.max(0,Number(query.offset||0));
+    let limit=Math.min(Math.max(1,Number(query.limit||TOVATI_CONFIG.pageSize)),TOVATI_CONFIG.maxPageSize);
     return {items:rows.slice(offset,offset+limit),total:rows.length,offset,limit};
   }
+
   async get(collection,id){
-    return this.#rows(collection).find(x=>String(x.id??x.ref??x.order??x['הזמנה']??'')===String(id))||null;
+    return this.#rows(collection).find(x=>String(
+      x.id??x.ref??x.order??x['הזמנה']??x.permit??x['היתר']??x['מספר היתר']??''
+    )===String(id))||null;
   }
+
   async upsert(){throw new Error('R24 compatibility data source is read-only');}
   async bulkUpsert(){throw new Error('R24 compatibility data source is read-only');}
   async remove(){throw new Error('R24 compatibility data source is read-only');}
