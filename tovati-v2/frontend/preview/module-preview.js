@@ -415,6 +415,49 @@ async function mountDashboard(root,api){
   }catch(e){showError(root,e);}
 }
 
+async function mountPersonal(root,api){
+  const body=root.querySelector('#v2Body');
+  const user=api.legacy?.user?.();
+  if(!user){
+    body.innerHTML='<div class="v2-empty">לא נבחר משתמש</div>';
+    return;
+  }
+  const today=new Date().toISOString().slice(0,10);
+  showError(root,'');
+  try{
+    const data=await api.modules.personalArea.load(user.id,today);
+    const tasks=data.tasks.items||[],assignments=data.assignments.items||[],alerts=data.alerts.items||[];
+    body.innerHTML=`<div class="v2-metrics">
+      <div><b>${tasks.length}</b><span>משימות פתוחות</span></div>
+      <div><b>${assignments.length}</b><span>שיבוצים להיום</span></div>
+      <div><b>${alerts.length}</b><span>התראות</span></div>
+    </div>
+    <div class="v2-columns">
+      <section class="v2-panel"><h2>השיבוצים שלי</h2><div class="v2-list">${assignments.map(a=>`<div class="v2-row"><bdi>${esc(a.start||'')}–${esc(a.end||'')}</bdi><strong>${esc(a.snapshot?.title||a.workRef||'')}</strong><small>${esc(a.status||'')}</small></div>`).join('')||'<div class="v2-empty">אין שיבוצים להיום</div>'}</div></section>
+      <section class="v2-panel"><h2>משימות והתראות</h2><div class="v2-list">${tasks.map(t=>`<div class="v2-row"><strong>${esc(t.title||'משימה')}</strong><small>${esc(t.due_at||t.dueAt||'')}</small></div>`).join('')}${alerts.map(a=>`<div class="v2-row"><strong>${esc(a.title||'התראה')}</strong><small>${esc(a.message||'')}</small></div>`).join('')||(!tasks.length?'<div class="v2-empty">אין משימות או התראות פתוחות</div>':'')}</div></section>
+    </div>`;
+  }catch(e){showError(root,e);}
+}
+
+async function mountAnnualPlans(root,api){
+  const body=root.querySelector('#v2Body');
+  const year=new Date().getFullYear();
+  showError(root,'');
+  try{
+    const page=await api.modules.annualPlans.list({year,offset:0,limit:100});
+    body.innerHTML=`<div class="v2-toolbar"><strong>תוכנית עבודה שנתית · ${year}</strong></div><div class="v2-list">${page.items.map(x=>`<div class="v2-row"><strong>${esc(x.title||x.id)}</strong><small>${esc([x.department_id||x.departmentId,x.status].filter(Boolean).join(' · '))}</small></div>`).join('')||'<div class="v2-empty">עדיין לא נטענו תוכניות עבודה שנתיות ל־V2</div>'}</div>`;
+  }catch(e){showError(root,e);}
+}
+
+async function mountOverhauls(root,api){
+  const body=root.querySelector('#v2Body');
+  showError(root,'');
+  try{
+    const page=await api.modules.unitOverhauls.listProjects({offset:0,limit:100});
+    body.innerHTML=`<div class="v2-toolbar"><strong>שיפוצי יחידות</strong></div><div class="v2-list">${page.items.map(x=>`<div class="v2-row"><strong>${esc(x.title||x.id)}</strong><small>${esc([x.unit_id||x.unitId,x.status,(x.progress??0)+'%'].filter(Boolean).join(' · '))}</small></div>`).join('')||'<div class="v2-empty">עדיין לא נטענו פרויקטי שיפוץ ל־V2</div>'}</div>`;
+  }catch(e){showError(root,e);}
+}
+
 export async function mountV2Preview(moduleId,api){
   const titles={
     'daily-maintenance':'ניהול תחזוקה יומי',
@@ -422,7 +465,10 @@ export async function mountV2Preview(moduleId,api){
     'department-planning':'תכנון מחלקתי',
     'preventive-maintenance':'תחזוקה מונעת',
     'permits-jsa-ptp':'היתרים / JSA / PTP',
-    'management-dashboard':'דשבורד ניהולי'
+    'management-dashboard':'דשבורד ניהולי',
+    'personal-area':'אזור אישי',
+    'annual-plans':'תוכניות עבודה שנתיות',
+    'unit-overhauls':'שיפוצי יחידות'
   };
   const root=shell(titles[moduleId]||'תובתי V2');
   if(moduleId==='operations') return mountOperations(root,api);
@@ -430,5 +476,8 @@ export async function mountV2Preview(moduleId,api){
   if(moduleId==='preventive-maintenance') return mountPreventive(root,api);
   if(moduleId==='permits-jsa-ptp') return mountPermits(root,api);
   if(moduleId==='management-dashboard') return mountDashboard(root,api);
+  if(moduleId==='personal-area') return mountPersonal(root,api);
+  if(moduleId==='annual-plans') return mountAnnualPlans(root,api);
+  if(moduleId==='unit-overhauls') return mountOverhauls(root,api);
   return mountDaily(root,api);
 }
