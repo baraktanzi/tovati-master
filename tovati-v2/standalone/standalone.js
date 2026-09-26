@@ -9,6 +9,7 @@ import { AnnualPlansController } from '../frontend/modules/annual-plans/controll
 import { UnitOverhaulsController } from '../frontend/modules/unit-overhauls/controller.js';
 import { ManagementDashboardController } from '../frontend/modules/management-dashboard/controller.js';
 import { PersonalAreaController } from '../frontend/modules/personal-area/controller.js';
+import { WorkExecutionController } from '../frontend/modules/work-execution/controller.js';
 import { mountV2Preview } from '../frontend/preview/module-preview.js';
 
 const source=new LocalDataSource();
@@ -31,7 +32,8 @@ const api={
     annualPlans:new AnnualPlansController(source),
     unitOverhauls:new UnitOverhaulsController(source),
     managementDashboard:new ManagementDashboardController(source),
-    personalArea:new PersonalAreaController(source)
+    personalArea:new PersonalAreaController(source),
+    workExecution:new WorkExecutionController(source)
   }
 };
 
