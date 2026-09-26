@@ -1,6 +1,7 @@
 import { WorkRepository } from '../../core/repositories/work-repository.js';
 import { TOVATI_CONFIG } from '../../config/runtime-config.js';
 import { assignmentsForDay, planningCandidates, buildAssignment } from './planning.js';
+import { CAPABILITIES, requireCapability, applyUserScope } from '../../core/authorization.js';
 
 async function allPages(loader,query={}){
   const rows=[];
@@ -15,9 +16,18 @@ async function allPages(loader,query={}){
 }
 
 export class DepartmentPlanningController{
-  constructor(repository=new WorkRepository()){this.repository=repository;}
+  constructor(repository=new WorkRepository(),options={}){
+    this.repository=repository;
+    this.getCurrentUser=options.getCurrentUser||(()=>window.TOVATI_R24_BRIDGE?.currentUser?.()||null);
+  }
 
   async loadDay({date,departmentId='',section='',workerId='',search='',offset=0,limit=50}={}){
+    const user=this.getCurrentUser();
+    requireCapability(user,CAPABILITIES.PLANNING_READ,'אין הרשאה לצפייה בתכנון המחלקתי');
+    const scoped=applyUserScope(user,{departmentId,section});
+    departmentId=scoped.departmentId||'';
+    section=scoped.section||'';
+
     if(TOVATI_CONFIG.mode==='company-server'&&typeof this.repository.source.request==='function'){
       const params=new URLSearchParams({date,departmentId,section,workerId,search,offset:String(offset),limit:String(limit)});
       return this.repository.source.request('/planning/day?'+params.toString());
@@ -43,8 +53,13 @@ export class DepartmentPlanningController{
   }
 
   async createAssignment(input){
+    const user=this.getCurrentUser();
+    requireCapability(user,CAPABILITIES.PLANNING_SCHEDULE,'שיבוץ עבודה זמין למשתמשי אחזקה בלבד');
     const card=await this.repository.getWorkItem(input.workItemId);
     if(!card) throw new Error('העבודה לא נמצאה');
+    const scope=applyUserScope(user,{});
+    if(scope.departmentId&&String(card.department_id||card.departmentId||'')!==scope.departmentId)throw new Error('העבודה מחוץ למחלקה שלך');
+    if(scope.section&&String(card.section||'')!==scope.section)throw new Error('העבודה מחוץ למדור שלך');
     const assignment=buildAssignment({
       id:input.id||crypto.randomUUID(),
       workItem:{
@@ -59,7 +74,7 @@ export class DepartmentPlanningController{
       end:input.end,
       workerIds:input.workerIds,
       note:input.note,
-      actorId:input.actorId
+      actorId:input.actorId||user?.id||''
     });
     return this.repository.saveAssignment(assignment,{version:'*'});
   }
