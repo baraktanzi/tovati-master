@@ -241,6 +241,28 @@ window.TOVATI_R24_BRIDGE=Object.freeze({
     return window.TOVATI_PILOT.setAssignmentStatus(String(id),String(status),Boolean(confirmed));
   },
 
+  saveDelay(input,id=''){
+    if(!window.TOVATI_PILOT?.saveDelay) throw new Error('R24 delay API is unavailable');
+    return clone(window.TOVATI_PILOT.saveDelay({
+      workRef:String(input.workRef||input.work_item_id||''),
+      type:String(input.type||input.delay_type||''),
+      owner:String(input.owner||input.owner_user_id||''),
+      text:String(input.text||input.details||''),
+      due:String(input.due||input.follow_up_date||'')
+    },String(id||input.id||'')));
+  },
+
+  saveTime(input,id=''){
+    if(!window.TOVATI_PILOT?.saveTime) throw new Error('R24 time-entry API is unavailable');
+    return clone(window.TOVATI_PILOT.saveTime({
+      workRef:String(input.workRef||input.work_item_id||''),
+      workerId:String(input.workerId||input.user_id||''),
+      date:String(input.date||input.work_date||''),
+      hours:Number(input.hours||0),
+      text:String(input.text||input.description||'')
+    },String(id||input.id||'')));
+  },
+
   completeWork(input){
     if(!window.TOVATI_PILOT?.completeWork) throw new Error('R24 completion API is unavailable');
     return window.TOVATI_PILOT.completeWork(input);
