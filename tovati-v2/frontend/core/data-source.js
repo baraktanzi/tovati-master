@@ -2,6 +2,15 @@ import { TOVATI_CONFIG } from '../config/runtime-config.js';
 
 const DB_NAME='tovati-v2-local', STORE='entities';
 
+export class ConflictError extends Error{
+  constructor(message='Version conflict',details={}){
+    super(message);
+    this.name='ConflictError';
+    this.code='VERSION_CONFLICT';
+    this.details=details;
+  }
+}
+
 function openDb(){
   return new Promise((resolve,reject)=>{
     const req=indexedDB.open(DB_NAME,1);
@@ -134,16 +143,67 @@ export class LocalDataSource{
     });
   }
 
-  async upsert(collection,entity){
+  async upsert(collection,entity,options={}){
     if(!entity?.id) throw new Error('entity.id required');
+    const id=String(entity.id);
+    const expected=options.version??entity.version??'*';
     const db=await openDb();
-    const tx=db.transaction(STORE,'readwrite');
-    tx.objectStore(STORE).put({
-      collection,id:String(entity.id),updatedAt:Date.now(),
-      data:{...entity,id:String(entity.id)}
+
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(STORE,'readwrite');
+      const store=tx.objectStore(STORE);
+      let saved=null;
+      let settled=false;
+
+      const fail=error=>{
+        if(settled)return;
+        settled=true;
+        try{tx.abort();}catch{}
+        reject(error);
+      };
+
+      const req=store.get([collection,id]);
+      req.onerror=()=>fail(req.error||new Error('IndexedDB read failed'));
+      req.onsuccess=()=>{
+        const current=req.result?.data||null;
+        const currentVersion=Number(current?.version||0);
+
+        if(expected!=='*'&&Number(expected)!==currentVersion){
+          fail(new ConflictError('הנתונים השתנו מאז פתיחת הכרטיס',{
+            collection,id,
+            expectedVersion:Number(expected),
+            currentVersion,
+            current
+          }));
+          return;
+        }
+
+        const version=currentVersion+1;
+        saved={...entity,id,version};
+        store.put({
+          collection,
+          id,
+          updatedAt:Date.now(),
+          data:saved
+        });
+      };
+
+      tx.oncomplete=()=>{
+        if(settled)return;
+        settled=true;
+        resolve(saved);
+      };
+      tx.onerror=()=>{
+        if(settled)return;
+        settled=true;
+        reject(tx.error||new Error('IndexedDB write failed'));
+      };
+      tx.onabort=()=>{
+        if(settled)return;
+        settled=true;
+        reject(tx.error||new Error('IndexedDB transaction aborted'));
+      };
     });
-    await waitTx(tx);
-    return entity;
   }
 
   async bulkUpsert(collection,entities=[]){
@@ -302,7 +362,16 @@ export class HttpDataSource{
         headers,
         signal:controller.signal
       });
-      if(!response.ok) throw new Error('HTTP '+response.status);
+      if(!response.ok){
+        const payload=await response.json().catch(()=>({}));
+        if(response.status===409){
+          throw new ConflictError(payload.error||'הנתונים השתנו בשרת',{
+            status:409,
+            ...payload
+          });
+        }
+        throw new Error(payload.error||('HTTP '+response.status));
+      }
       return response.status===204?null:response.json();
     }finally{clearTimeout(timer);}
   }
