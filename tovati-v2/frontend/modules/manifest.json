@@ -1,0 +1,10 @@
+{"modules":[
+{"id":"daily-maintenance","label":"ניהול תחזוקה יומי","route":"/maintenance/daily"},
+{"id":"operations","label":"תפעול ותעדוף","route":"/operations"},
+{"id":"department-planning","label":"תכנון מחלקתי","route":"/planning"},
+{"id":"preventive-maintenance","label":"תחזוקה מונעת","route":"/maintenance/preventive"},
+{"id":"permits-jsa-ptp","label":"היתרים / JSA / PTP","route":"/safety"},
+{"id":"annual-plans","label":"תוכניות עבודה שנתיות","route":"/plans/annual"},
+{"id":"unit-overhauls","label":"שיפוצי יחידות","route":"/overhauls"},
+{"id":"management-dashboard","label":"דשבורד ניהולי","route":"/management"},
+{"id":"personal-area","label":"אזור אישי","route":"/me"}]}
