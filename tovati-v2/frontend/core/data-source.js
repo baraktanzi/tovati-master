@@ -25,18 +25,102 @@ function waitTx(tx){
   });
 }
 
+function filterCollectionRows(collection,rows,query={}){
+  let out=[...rows];
+  const q=String(query.search||'').trim().toLowerCase();
+
+  if(collection==='work-items'){
+    out=out.filter(x=>query.departmentId?String(x.department_id||x.departmentId||'')===String(query.departmentId):true)
+      .filter(x=>query.section?String(x.section||'')===String(query.section):true)
+      .filter(x=>query.operationalPriority?String(x.operational_priority||x.operationalPriority||'')===String(query.operationalPriority):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true)
+      .filter(x=>String(query.includeClosed)==='1'?true:!['done','closed','בוצע','סגור'].includes(String(x.status||'').toLowerCase()))
+      .filter(x=>!q||[x.title,x.notification_id,x.notificationId,x.order_id,x.orderId,x.permit_id,x.permitId,x.section].join(' ').toLowerCase().includes(q));
+  }
+
+  if(collection==='assignments'){
+    out=out.filter(x=>query.date?String(x.date||'')===String(query.date):true)
+      .filter(x=>query.departmentId?String(x.departmentId||x.department_id||x.snapshot?.departmentId||'')===String(query.departmentId):true)
+      .filter(x=>query.section?String(x.section||x.snapshot?.section||'')===String(query.section):true)
+      .filter(x=>query.workerId?(x.workerIds||[]).includes(query.workerId):true)
+      .filter(x=>x.status!=='cancelled');
+  }
+
+  if(collection==='users'){
+    out=out.filter(x=>query.departmentId?String(x.dept||x.department_id||'')===String(query.departmentId):true)
+      .filter(x=>query.section?String(x.section||'')===String(query.section):true)
+      .filter(x=>query.active==null?true:Boolean(x.active)===Boolean(query.active));
+  }
+
+  if(collection==='pm-tasks'){
+    out=out.filter(x=>query.departmentId?String(x.department_id||x.departmentId||'')===String(query.departmentId):true)
+      .filter(x=>query.month?String(x.due_at||x.dueAt||'').slice(0,7)===String(query.month):true)
+      .filter(x=>!q||[x.order_id,x.orderId,x.title,x.asset,x.section,x.plan,x.status].join(' ').toLowerCase().includes(q));
+  }
+
+  if(collection==='permits'){
+    out=out.filter(x=>query.status?String(x.status||'')===String(query.status):true)
+      .filter(x=>query.orderId?String(x.order_id||x.orderId||'')===String(query.orderId):true)
+      .filter(x=>!q||[x.id,x.order_id,x.orderId,x.title,x.status].join(' ').toLowerCase().includes(q));
+  }
+
+  if(collection==='personal-tasks'){
+    out=out.filter(x=>query.assigneeId?String(x.assigneeId||x.assignee_id||'')===String(query.assigneeId):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+  }
+
+  if(collection==='alerts'){
+    out=out.filter(x=>query.userId?String(x.user_id||x.userId||'')===String(query.userId):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+  }
+
+  if(collection==='work-delays'){
+    out=out.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
+      .filter(x=>query.status?String(x.state||x.status||'')===String(query.status):true);
+  }
+
+  if(collection==='time-entries'){
+    out=out.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
+      .filter(x=>query.userId?String(x.workerId||x.user_id||'')===String(query.userId):true);
+  }
+
+  if(collection==='work-closures'){
+    out=out.filter(x=>query.workItemId?String(x.work_item_id||x.id||'')===String(query.workItemId):true);
+  }
+
+  if(collection==='annual-plans'){
+    out=out.filter(x=>query.year?String(x.year||'')===String(query.year):true)
+      .filter(x=>query.departmentId?String(x.department_id||x.departmentId||'')===String(query.departmentId):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+  }
+
+  if(collection==='overhaul-projects'){
+    out=out.filter(x=>query.unitId?String(x.unit_id||x.unitId||'')===String(query.unitId):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+  }
+
+  if(collection==='overhaul-tasks'){
+    out=out.filter(x=>query.projectId?String(x.project_id||x.projectId||'')===String(query.projectId):true)
+      .filter(x=>query.departmentId?String(x.department_id||x.departmentId||'')===String(query.departmentId):true)
+      .filter(x=>query.status?String(x.status||'')===String(query.status):true);
+  }
+
+  return out;
+}
+
 export class LocalDataSource{
-  async list(collection,{offset=0,limit=TOVATI_CONFIG.pageSize}={}){
+  async list(collection,query={}){
     const db=await openDb();
     const tx=db.transaction(STORE,'readonly');
     const req=tx.objectStore(STORE).index('by_collection').getAll(IDBKeyRange.only(collection));
-    const rows=await new Promise((resolve,reject)=>{
+    const stored=await new Promise((resolve,reject)=>{
       req.onsuccess=()=>resolve(req.result||[]);
       req.onerror=()=>reject(req.error);
     });
-    offset=Math.max(0,Number(offset));
-    limit=Math.min(Math.max(1,Number(limit)),TOVATI_CONFIG.maxPageSize);
-    return {items:rows.slice(offset,offset+limit).map(r=>r.data),total:rows.length,offset,limit};
+    const rows=filterCollectionRows(collection,stored.map(r=>r.data),query);
+    let offset=Math.max(0,Number(query.offset||0));
+    let limit=Math.min(Math.max(1,Number(query.limit||TOVATI_CONFIG.pageSize)),TOVATI_CONFIG.maxPageSize);
+    return {items:rows.slice(offset,offset+limit),total:rows.length,offset,limit};
   }
 
   async get(collection,id){
@@ -127,70 +211,7 @@ export class LegacyR24DataSource{
   }
 
   #filtered(collection,query={}){
-    let rows=this.#rows(collection);
-    const q=String(query.search||'').trim().toLowerCase();
-
-    if(collection==='work-items'){
-      rows=rows.filter(x=>query.departmentId?String(x.department_id||'')===String(query.departmentId):true)
-        .filter(x=>query.section?String(x.section||'')===String(query.section):true)
-        .filter(x=>query.operationalPriority?String(x.operational_priority||'')===String(query.operationalPriority):true)
-        .filter(x=>query.status?String(x.status||'')===String(query.status):true)
-        .filter(x=>String(query.includeClosed)==='1'?true:!['done','closed','בוצע','סגור'].includes(String(x.status||'').toLowerCase()))
-        .filter(x=>!q||[
-          x.title,x.notification_id,x.order_id,x.permit_id,x.section
-        ].join(' ').toLowerCase().includes(q));
-    }
-
-    if(collection==='assignments'){
-      rows=rows.filter(x=>query.date?String(x.date||'')===String(query.date):true)
-        .filter(x=>query.departmentId?String(x.departmentId||x.snapshot?.departmentId||'')===String(query.departmentId):true)
-        .filter(x=>query.section?String(x.section||x.snapshot?.section||'')===String(query.section):true)
-        .filter(x=>query.workerId?(x.workerIds||[]).includes(query.workerId):true)
-        .filter(x=>x.status!=='cancelled');
-    }
-
-    if(collection==='users'){
-      rows=rows.filter(x=>query.departmentId?String(x.dept||x.department_id||'')===String(query.departmentId):true)
-        .filter(x=>query.section?String(x.section||'')===String(query.section):true)
-        .filter(x=>query.active==null?true:Boolean(x.active)===Boolean(query.active));
-    }
-
-    if(collection==='pm-tasks'){
-      rows=rows.filter(x=>query.departmentId?String(x.department_id||'')===String(query.departmentId):true)
-        .filter(x=>query.month?String(x.due_at||'').slice(0,7)===String(query.month):true)
-        .filter(x=>!q||[x.order_id,x.title,x.asset,x.section,x.plan,x.status].join(' ').toLowerCase().includes(q));
-    }
-
-    if(collection==='permits'){
-      rows=rows.filter(x=>query.status?String(x.status||'')===String(query.status):true)
-        .filter(x=>query.orderId?String(x.order_id||'')===String(query.orderId):true)
-        .filter(x=>!q||[x.id,x.order_id,x.title,x.status].join(' ').toLowerCase().includes(q));
-    }
-
-    if(collection==='personal-tasks'){
-      rows=rows.filter(x=>query.assigneeId?String(x.assigneeId||x.assignee_id||'')===String(query.assigneeId):true)
-        .filter(x=>query.status?String(x.status||'')===String(query.status):true);
-    }
-
-    if(collection==='alerts'){
-      rows=rows.filter(x=>query.status?String(x.status||'')===String(query.status):true);
-    }
-
-    if(collection==='work-delays'){
-      rows=rows.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
-        .filter(x=>query.status?String(x.state||x.status||'')===String(query.status):true);
-    }
-
-    if(collection==='time-entries'){
-      rows=rows.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
-        .filter(x=>query.userId?String(x.workerId||x.user_id||'')===String(query.userId):true);
-    }
-
-    if(collection==='work-closures'){
-      rows=rows.filter(x=>query.workItemId?String(x.work_item_id||x.id||'')===String(query.workItemId):true);
-    }
-
-    return rows;
+    return filterCollectionRows(collection,this.#rows(collection),query);
   }
 
   async list(collection,query={}){
