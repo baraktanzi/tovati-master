@@ -56,3 +56,10 @@ if(previewModule){
     .then(m=>m.mountV2Preview(previewModule,api))
     .catch(error=>console.error('TOVATI V2 preview failed',error));
 }
+
+const migrateRequested=new URLSearchParams(location.search).get('v2migrate')==='1';
+if(migrateRequested){
+  import('./migration/migration-ui.js')
+    .then(m=>m.runMigrationOverlay())
+    .catch(error=>console.error('TOVATI V2 migration failed',error));
+}
