@@ -51,14 +51,60 @@ function legacyAssignments(){
   }catch{return [];}
 }
 
+function normalizedPmTasks(){
+  try{
+    const rows=typeof db!=='undefined'&&Array.isArray(db?.pmOrders)?db.pmOrders:[];
+    return rows.map(p=>({
+      id:String(p.id||('pmorder:'+p.order)||''),
+      order_id:String(p.order||''),
+      title:String(p.title||''),
+      department_id:String(p.dept||(typeof deptForCenter==='function'?deptForCenter(p.section):'')||''),
+      section:String(p.section||''),
+      due_at:p.due||null,
+      asset:String(p.asset||''),
+      status:String(p.status||''),
+      duration:Number(p.duration||1),
+      work_hours:Number(p.workHours||0),
+      actual_hours:Number(p.actualHours||0),
+      maintenance_item:String(p.maintenanceItem||''),
+      plan:String(p.plan||''),
+      cycle:String(p.cycle||''),
+      priority:String(p.priority||'רגיל'),
+      version:Number((typeof db!=='undefined'&&db?.revision)||1)
+    })).filter(x=>x.id);
+  }catch{return [];}
+}
+
+function normalizedPermits(){
+  try{
+    const rows=typeof DATASETS!=='undefined'?DATASETS?.permits||[]:[];
+    return rows.map((p,index)=>{
+      const permit=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(p,ALIASES.permit)||''):String(p.id||p.permit||'');
+      const order=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(p,ALIASES.order)||''):String(p.order||'');
+      const status=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(p,ALIASES.permitStatus)||''):String(p.status||'');
+      const title=typeof val==='function'?String(val(p,['תיאור היתר','תאור היתר','תיאור',...(typeof ALIASES!=='undefined'?ALIASES.description||[]:[])])||''):String(p.title||'');
+      const until=typeof val==='function'?String(val(p,['תקף עד-','תקף עד','תאריך סיום תוקף'])||'').slice(0,10):String(p.valid_until||'').slice(0,10);
+      return {
+        id:permit||String(index),
+        source_index:index,
+        order_id:order,
+        title,
+        status,
+        valid_until:until||null,
+        raw:clone(p)
+      };
+    });
+  }catch{return [];}
+}
+
 function legacyCollection(name){
   try{
     if(name==='work-items') return normalizedWorkItems();
     if(name==='assignments') return legacyAssignments();
     if(name==='users') return clone(typeof db!=='undefined'?db?.workers||[]:[])||[];
-    if(name==='pm-tasks') return clone(typeof db!=='undefined'?db?.pmOrders||[]:[])||[];
+    if(name==='pm-tasks') return normalizedPmTasks();
     if(name==='orders') return clone(typeof DATASETS!=='undefined'?DATASETS?.orders||[]:[])||[];
-    if(name==='permits') return clone(typeof DATASETS!=='undefined'?DATASETS?.permits||[]:[])||[];
+    if(name==='permits') return normalizedPermits();
     if(name==='notifications') return clone(typeof DATASETS!=='undefined'?DATASETS?.notifications||[]:[])||[];
     return [];
   }catch{return [];}
