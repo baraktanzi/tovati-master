@@ -11,6 +11,7 @@ import { ManagementDashboardController } from '../frontend/modules/management-da
 import { PersonalAreaController } from '../frontend/modules/personal-area/controller.js';
 import { WorkExecutionController } from '../frontend/modules/work-execution/controller.js';
 import { mountV2Preview } from '../frontend/preview/module-preview.js';
+import { CAPABILITIES, hasCapability } from '../frontend/core/authorization.js';
 
 const source=new LocalDataSource();
 const repository=new WorkRepository(source);
@@ -40,15 +41,15 @@ const api={
 window.TOVATI_V2_LOCAL=api;
 
 const modules=[
-  ['daily-maintenance','תחזוקה יומית','עבודות פתוחות, סטטוסים וכרטיסי עבודה','01'],
-  ['operations','תפעול ותעדוף','מיידי, להיום, למחר ולילה','02'],
-  ['department-planning','תכנון מחלקתי','Backlog, עובדים ולוח עבודה יומי','03'],
-  ['preventive-maintenance','תחזוקה מונעת','פקודות PM וחודש ביצוע','04'],
-  ['permits-jsa-ptp','היתרים / JSA / PTP','חבילת בטיחות מקושרת לעבודה','05'],
-  ['management-dashboard','דשבורד ניהולי','KPIs וחריגות','06'],
-  ['personal-area','אזור אישי','המשימות, השיבוצים וההתראות שלי','07'],
-  ['annual-plans','תוכניות עבודה שנתיות','תכנון שנתי לפי מחלקות ויעדים','08'],
-  ['unit-overhauls','שיפוצי יחידות','פרויקטים, אבני דרך ומשימות שיפוץ','09']
+  ['daily-maintenance','תחזוקה יומית','עבודות פתוחות, סטטוסים וכרטיסי עבודה','01',CAPABILITIES.DAILY_READ],
+  ['operations','תפעול ותעדוף','מיידי, להיום, למחר ולילה','02',CAPABILITIES.OPERATIONS_PRIORITIZE],
+  ['department-planning','תכנון מחלקתי','Backlog, עובדים ולוח עבודה יומי','03',CAPABILITIES.PLANNING_READ],
+  ['preventive-maintenance','תחזוקה מונעת','פקודות PM וחודש ביצוע','04',CAPABILITIES.PM_READ],
+  ['permits-jsa-ptp','היתרים / JSA / PTP','חבילת בטיחות מקושרת לעבודה','05',CAPABILITIES.PERMITS_READ],
+  ['management-dashboard','דשבורד ניהולי','KPIs וחריגות','06',CAPABILITIES.DASHBOARD_READ],
+  ['personal-area','אזור אישי','המשימות, השיבוצים וההתראות שלי','07',CAPABILITIES.PERSONAL_READ],
+  ['annual-plans','תוכניות עבודה שנתיות','תכנון שנתי לפי מחלקות ויעדים','08',CAPABILITIES.ANNUAL_READ],
+  ['unit-overhauls','שיפוצי יחידות','פרויקטים, אבני דרך ומשימות שיפוץ','09',CAPABILITIES.OVERHAUL_READ]
 ];
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -74,7 +75,7 @@ async function renderLauncher(){
     <main class="tv2s-wrap">
       <section class="tv2s-banner"><div><strong>עבודה מקומית ללא שרת</strong><p>מקור ההעתקה: R24 · revision ${esc(meta.sourceRevision)} · ${esc(meta.migratedAt)}</p></div><span class="tv2s-state">IndexedDB פעיל</span></section>
       <section class="tv2s-grid">
-        ${modules.map(([id,title,desc,icon])=>`<a class="tv2s-module" href="?v2module=${id}"><span class="tv2s-icon">${icon}</span><h2>${title}</h2><p>${desc}</p><span>פתיחת מודול ←</span></a>`).join('')}
+        ${modules.filter(([, , , ,cap])=>hasCapability(currentUser,cap)).map(([id,title,desc,icon])=>`<a class="tv2s-module" href="?v2module=${id}"><span class="tv2s-icon">${icon}</span><h2>${title}</h2><p>${desc}</p><span>פתיחת מודול ←</span></a>`).join('')}
       </section>
     </main>`;
 
@@ -82,6 +83,7 @@ async function renderLauncher(){
     const id=event.target.value;
     currentUser=users.items.find(u=>String(u.id)===String(id))||null;
     if(currentUser)localStorage.setItem(USER_KEY,String(currentUser.id));
+    renderLauncher();
   };
 }
 
