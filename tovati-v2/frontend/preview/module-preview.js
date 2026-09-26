@@ -29,6 +29,21 @@ function showError(root,error){
   el.hidden=!error;el.textContent=error?'שגיאה: '+(error.message||error):'';
 }
 
+function watchRemote(api,collections,reload){
+  if(typeof api.data?.subscribe!=='function')return()=>{};
+  const wanted=new Set(collections);
+  let timer=null;
+  const off=api.data.subscribe(event=>{
+    if(!event?.remote||!wanted.has(event.collection))return;
+    clearTimeout(timer);
+    timer=setTimeout(()=>{
+      Promise.resolve(reload()).catch(error=>console.error('V2 remote refresh failed',error));
+    },80);
+  });
+  window.addEventListener('pagehide',off,{once:true});
+  return off;
+}
+
 function objectRows(value={}){
   const source=value?.raw&&typeof value.raw==='object'?value.raw:value||{};
   return Object.entries(source)
@@ -225,6 +240,7 @@ async function mountDaily(root,api){
   const reload=()=>list.reset().catch(e=>showError(root,e));
   body.querySelector('[data-load]').onclick=reload;
   body.querySelector('[data-op]').onchange=reload;
+  watchRemote(api,['work-items'],reload);
   let timer;
   body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(reload,220);};
   await reload();
@@ -259,6 +275,7 @@ async function mountOperations(root,api){
 
   const reload=()=>list.reset().catch(e=>showError(root,e));
   body.querySelector('[data-load]').onclick=reload;
+  watchRemote(api,['work-items'],reload);
   let timer;
   body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(reload,220);};
   await reload();
@@ -351,6 +368,7 @@ async function mountPlanning(root,api){
 
   body.querySelector('[data-load]').onclick=load;
   body.querySelector('[data-date]').onchange=load;
+  watchRemote(api,['work-items','assignments','users'],load);
   let timer;
   body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
   await load();
@@ -372,6 +390,7 @@ async function mountPreventive(root,api){
   };
   body.querySelector('[data-load]').onclick=load;
   body.querySelector('[data-month]').onchange=load;
+  watchRemote(api,['pm-tasks','assignments'],load);
   let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
   await load();
 }
@@ -394,6 +413,7 @@ async function mountPermits(root,api){
     }catch(e){showError(root,e);}
   };
   body.querySelector('[data-load]').onclick=load;
+  watchRemote(api,['permits','jsa','ptp'],load);
   let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
   await load();
 }
