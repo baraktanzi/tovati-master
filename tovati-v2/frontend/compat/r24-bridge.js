@@ -153,7 +153,26 @@ function legacyCollection(name){
     if(name==='orders') return normalizedOrders();
     if(name==='permits') return normalizedPermits();
     if(name==='notifications') return normalizedNotifications();
+    if(name==='departments'){
+      const groups=typeof db!=='undefined'&&Array.isArray(db?.userGroups)?db.userGroups:[];
+      return clone(groups.filter(g=>g.type==='department').map(g=>({
+        id:String(g.code||g.id||''),
+        name:String(g.name||g.code||''),
+        active:g.active!==false
+      })))||[];
+    }
     if(name==='personal-tasks') return clone(typeof db!=='undefined'?db?.personalTasks||[]:[])||[];
+    if(name==='work-delays') return clone(typeof db!=='undefined'?db?.delays||[]:[])||[];
+    if(name==='time-entries') return clone(typeof db!=='undefined'?db?.timeEntries||[]:[])||[];
+    if(name==='priority-publications') return clone(typeof db!=='undefined'?db?.priorityPublications||[]:[])||[];
+    if(name==='work-closures'){
+      const closures=typeof db!=='undefined'&&db?.closures&&typeof db.closures==='object'?db.closures:{};
+      return clone(Object.entries(closures).map(([workRef,x])=>({
+        id:String(workRef),
+        work_item_id:String(workRef),
+        ...x
+      })))||[];
+    }
     if(name==='alerts'){
       try{
         const rows=typeof rules==='function'?rules():[];
