@@ -1,5 +1,6 @@
 import { WorkRepository } from '../../core/repositories/work-repository.js';
-import { setOperationalPriority, groupPriorityPublication, canPrioritize } from './prioritization.js';
+import { setOperationalPriority, groupPriorityPublication } from './prioritization.js';
+import { CAPABILITIES, requireCapability } from '../../core/authorization.js';
 
 export class OperationsController{
   constructor(repository=new WorkRepository(),options={}){
@@ -19,7 +20,7 @@ export class OperationsController{
   }
 
   async changePriority(id,value,targetDate=null,version=null,user=this.getCurrentUser()){
-    if(!canPrioritize(user)) throw new Error('אין הרשאה לתעדוף תפעולי');
+    requireCapability(user,CAPABILITIES.OPERATIONS_PRIORITIZE,'אין הרשאה לתעדוף תפעולי');
     const card=await this.repository.getWorkItem(id);
     if(!card) throw new Error('העבודה לא נמצאה');
     const next=setOperationalPriority(card,value,targetDate);
