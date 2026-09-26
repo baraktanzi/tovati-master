@@ -75,6 +75,53 @@ function normalizedPmTasks(){
   }catch{return [];}
 }
 
+function normalizedOrders(){
+  try{
+    const rows=typeof DATASETS!=='undefined'?DATASETS?.orders||[]:[];
+    return rows.map((row,index)=>{
+      const order=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.order)||''):String(row.id||row.order||'');
+      const notification=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.notification)||''):String(row.notification||'');
+      const title=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.description)||''):String(row.title||row.description||'');
+      const center=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.center)||''):String(row.section||'');
+      const priority=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.priority)||''):String(row.priority||'');
+      return {
+        id:order||'order-row-'+index,
+        notification_id:notification,
+        title,
+        section:center.replace(/^3500\//,''),
+        department_id:typeof deptForCenter==='function'?String(deptForCenter(center)||''):'',
+        priority,
+        status:String(row['סטאטוס משתמש']||row['סטטוס משתמש']||row.status||''),
+        raw:clone(row)
+      };
+    });
+  }catch{return [];}
+}
+
+function normalizedNotifications(){
+  try{
+    const rows=typeof DATASETS!=='undefined'?DATASETS?.notifications||[]:[];
+    return rows.map((row,index)=>{
+      const notification=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.notification)||''):String(row.id||row.notification||'');
+      const order=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.order)||''):String(row.order||'');
+      const title=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.description)||''):String(row.title||row.description||'');
+      const center=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.center)||''):String(row.section||'');
+      const priority=typeof val==='function'&&typeof ALIASES!=='undefined'?String(val(row,ALIASES.priority)||''):String(row.priority||'');
+      return {
+        id:notification||'notification-row-'+index,
+        order_id:order,
+        title,
+        section:center.replace(/^3500\//,''),
+        department_id:typeof deptForCenter==='function'?String(deptForCenter(center)||''):'',
+        priority,
+        status:String(row['סטטוס משתמש']||row['סטאטוס משתמש']||row.status||''),
+        created_at:String(row['נוצר בתאריך']||row['תאריך יצירה']||''),
+        raw:clone(row)
+      };
+    });
+  }catch{return [];}
+}
+
 function normalizedPermits(){
   try{
     const rows=typeof DATASETS!=='undefined'?DATASETS?.permits||[]:[];
@@ -103,9 +150,9 @@ function legacyCollection(name){
     if(name==='assignments') return legacyAssignments();
     if(name==='users') return clone(typeof db!=='undefined'?db?.workers||[]:[])||[];
     if(name==='pm-tasks') return normalizedPmTasks();
-    if(name==='orders') return clone(typeof DATASETS!=='undefined'?DATASETS?.orders||[]:[])||[];
+    if(name==='orders') return normalizedOrders();
     if(name==='permits') return normalizedPermits();
-    if(name==='notifications') return clone(typeof DATASETS!=='undefined'?DATASETS?.notifications||[]:[])||[];
+    if(name==='notifications') return normalizedNotifications();
     if(name==='personal-tasks') return clone(typeof db!=='undefined'?db?.personalTasks||[]:[])||[];
     if(name==='alerts'){
       try{
