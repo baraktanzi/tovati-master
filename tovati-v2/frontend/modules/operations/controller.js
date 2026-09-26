@@ -1,5 +1,5 @@
 import { WorkRepository } from '../../core/repositories/work-repository.js';
-import { setOperationalPriority, groupPriorityPublication } from './prioritization.js';
+import { setOperationalPriority, groupPriorityPublication, canPrioritize } from './prioritization.js';
 
 export class OperationsController{
   constructor(repository=new WorkRepository()){this.repository=repository;}
@@ -15,7 +15,8 @@ export class OperationsController{
     });
   }
 
-  async changePriority(id,value,targetDate=null,version='*'){
+  async changePriority(id,value,targetDate=null,version='*',user=window.TOVATI_R24_BRIDGE?.currentUser?.()||null){
+    if(!canPrioritize(user)) throw new Error('אין הרשאה לתעדוף תפעולי');
     const card=await this.repository.getWorkItem(id);
     if(!card) throw new Error('העבודה לא נמצאה');
     const next=setOperationalPriority(card,value,targetDate);
