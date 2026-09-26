@@ -38,12 +38,12 @@ for(const worker of snapshot.state.workers||[]){
 snapshot.state.pmOrders=[];
 
 const slimJson=JSON.stringify(snapshot);
-const pmSeedScript='window.TOVATI_PM_SEED='+safeJsJson(pmSeed)+';\\n';
-const workerPhotosScript='window.TOVATI_WORKER_PHOTOS='+safeJsJson(workerPhotos)+';\\n';
+const pmSeedScript='window.TOVATI_PM_SEED='+safeJsJson(pmSeed)+';\n';
+const workerPhotosScript='window.TOVATI_WORKER_PHOTOS='+safeJsJson(workerPhotos)+';\n';
 const pmSeedHash=crypto.createHash('sha256').update(pmSeedScript).digest('hex').slice(0,12);
 const workerPhotosHash=crypto.createHash('sha256').update(workerPhotosScript).digest('hex').slice(0,12);
 const seedTag=
-  '<script src="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'"></script>\\n'+
+  '<script src="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'"></script>\n'+
   '<script src="/architecture-v2/data/worker-photos.js?v='+workerPhotosHash+'"></script>';
 
 source=source.slice(0,embedded.contentStart)+slimJson+source.slice(embedded.end);
@@ -56,10 +56,10 @@ if(!source.includes(oldEmbeddedFn))throw new Error('embeddedSnapshot implementat
 source=source.replace(oldEmbeddedFn,newEmbeddedFn);
 
 const preload=
-  '<link rel="preload" href="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'" as="script">\\n'+
+  '<link rel="preload" href="/architecture-v2/data/pm-seed.js?v='+pmSeedHash+'" as="script">\n'+
   '<link rel="preload" href="/architecture-v2/data/worker-photos.js?v='+workerPhotosHash+'" as="script">';
 if(!source.includes('rel="preload" href="/architecture-v2/data/pm-seed.js')){
-  source=source.replace('</head>',preload+'\\n</head>');
+  source=source.replace('</head>',preload+'\n</head>');
 }
 
 const compatTag='<script src="/architecture-v2/frontend/compat/r24-bridge.js?v=2"></script>';
