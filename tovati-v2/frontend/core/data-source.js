@@ -109,6 +109,7 @@ function filterCollectionRows(collection,rows,query={}){
 }
 
 export class LocalDataSource{
+  kind='local';
   async list(collection,query={}){
     const db=await openDb();
     const tx=db.transaction(STORE,'readonly');
@@ -205,6 +206,7 @@ export class LocalDataSource{
 }
 
 export class LegacyR24DataSource{
+  kind='legacy-local';
   #rows(collection){
     const bridge=window.TOVATI_R24_BRIDGE;
     return bridge?.collection?.(collection)||[];
@@ -281,6 +283,7 @@ export class LegacyR24DataSource{
 }
 
 export class HttpDataSource{
+  kind='company-server';
   constructor(){this.base=TOVATI_CONFIG.apiBase.replace(/\/$/,'');}
 
   async request(path,options={}){
