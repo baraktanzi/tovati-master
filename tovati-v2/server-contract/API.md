@@ -34,3 +34,11 @@ GET /api/v1/imports/status
 GET /api/v1/health
 
 The API implementation will live on the company server. No external endpoint is hard-coded into the frontend.
+
+
+## Management dashboard
+GET /api/v1/dashboard/kpis
+
+Optional query: departmentId, from, to.
+
+The internal server performs aggregation in PostgreSQL and returns compact KPI totals/groupings. The production dashboard must not download all work rows merely to calculate totals in the browser.
