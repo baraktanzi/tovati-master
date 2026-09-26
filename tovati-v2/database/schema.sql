@@ -152,3 +152,139 @@ create table if not exists audit_log(
   after_data jsonb,
   created_at timestamptz not null default now()
 );
+
+
+-- Extended maintenance modules
+create table if not exists annual_plans(
+  id text primary key,
+  year integer not null,
+  department_id text references departments(id),
+  title text not null,
+  status text not null default 'draft',
+  budget numeric,
+  planned_hours numeric,
+  owner_user_id text references users(id),
+  content jsonb not null default '{}'::jsonb,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists overhaul_projects(
+  id text primary key,
+  unit_id text not null,
+  title text not null,
+  status text not null default 'planned',
+  planned_start date,
+  planned_end date,
+  actual_start date,
+  actual_end date,
+  progress numeric not null default 0,
+  owner_user_id text references users(id),
+  content jsonb not null default '{}'::jsonb,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists overhaul_tasks(
+  id text primary key,
+  project_id text not null references overhaul_projects(id) on delete cascade,
+  work_item_id text references work_items(id),
+  department_id text references departments(id),
+  title text not null,
+  status text not null default 'planned',
+  planned_start timestamptz,
+  planned_end timestamptz,
+  progress numeric not null default 0,
+  is_critical boolean not null default false,
+  predecessor_ids jsonb not null default '[]'::jsonb,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists personal_tasks(
+  id text primary key,
+  assignee_id text references users(id),
+  work_item_id text references work_items(id),
+  title text not null,
+  due_at timestamptz,
+  status text not null default 'open',
+  content jsonb not null default '{}'::jsonb,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists alerts(
+  id text primary key,
+  user_id text references users(id),
+  department_id text references departments(id),
+  work_item_id text references work_items(id),
+  alert_type text not null,
+  severity text not null default 'info',
+  title text not null,
+  message text,
+  status text not null default 'open',
+  created_at timestamptz not null default now(),
+  read_at timestamptz,
+  resolved_at timestamptz,
+  version bigint not null default 1
+);
+
+create table if not exists work_delays(
+  id text primary key,
+  work_item_id text not null references work_items(id),
+  delay_type text not null,
+  owner_user_id text references users(id),
+  details text not null,
+  follow_up_date date,
+  status text not null default 'open',
+  resolution text,
+  resolved_at timestamptz,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists time_entries(
+  id text primary key,
+  work_item_id text not null references work_items(id),
+  user_id text not null references users(id),
+  work_date date not null,
+  hours numeric not null,
+  description text,
+  status text not null default 'draft',
+  voided boolean not null default false,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists work_closures(
+  work_item_id text primary key references work_items(id),
+  completed boolean not null default false,
+  summary text,
+  completed_by text references users(id),
+  completed_at timestamptz,
+  permit_checked boolean not null default false,
+  version bigint not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists priority_publications(
+  id text primary key,
+  publication_day date not null,
+  department_id text references departments(id),
+  author_user_id text references users(id),
+  items jsonb not null default '[]'::jsonb,
+  revision bigint not null default 1,
+  published_at timestamptz not null default now()
+);
+
+create table if not exists attachments(
+  id text primary key,
+  entity_type text not null,
+  entity_id text not null,
+  file_name text not null,
+  mime_type text,
+  size_bytes bigint,
+  storage_path text not null,
+  uploaded_by text references users(id),
+  uploaded_at timestamptz not null default now()
+);
