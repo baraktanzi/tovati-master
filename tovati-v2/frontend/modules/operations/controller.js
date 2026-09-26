@@ -2,7 +2,10 @@ import { WorkRepository } from '../../core/repositories/work-repository.js';
 import { setOperationalPriority, groupPriorityPublication, canPrioritize } from './prioritization.js';
 
 export class OperationsController{
-  constructor(repository=new WorkRepository()){this.repository=repository;}
+  constructor(repository=new WorkRepository(),options={}){
+    this.repository=repository;
+    this.getCurrentUser=options.getCurrentUser||(()=>window.TOVATI_R24_BRIDGE?.currentUser?.()||null);
+  }
 
   loadQueue(filters={}){
     return this.repository.listWorkItems({
@@ -15,7 +18,7 @@ export class OperationsController{
     });
   }
 
-  async changePriority(id,value,targetDate=null,version='*',user=window.TOVATI_R24_BRIDGE?.currentUser?.()||null){
+  async changePriority(id,value,targetDate=null,version='*',user=this.getCurrentUser()){
     if(!canPrioritize(user)) throw new Error('אין הרשאה לתעדוף תפעולי');
     const card=await this.repository.getWorkItem(id);
     if(!card) throw new Error('העבודה לא נמצאה');
