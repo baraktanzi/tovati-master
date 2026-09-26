@@ -1,6 +1,6 @@
 import { TOVATI_CONFIG } from '../config/runtime-config.js';
 
-const DB_NAME='tovati-v2-local', STORE='entities';
+const DB_NAME='tovati-v2-local', STORE='entities', LOCAL_CHANNEL='tovati-v2-local-sync';
 
 export class ConflictError extends Error{
   constructor(message='Version conflict',details={}){
@@ -119,6 +119,33 @@ function filterCollectionRows(collection,rows,query={}){
 
 export class LocalDataSource{
   kind='local';
+
+  constructor(){
+    this.listeners=new Set();
+    this.channel=typeof BroadcastChannel!=='undefined'?new BroadcastChannel(LOCAL_CHANNEL):null;
+    this.channel?.addEventListener('message',event=>{
+      const msg=event.data;
+      if(msg?.source==='tovati-v2'&&msg.event)this.#emit(msg.event,false);
+    });
+  }
+
+  subscribe(handler){
+    this.listeners.add(handler);
+    return()=>this.listeners.delete(handler);
+  }
+
+  close(){
+    this.channel?.close();
+    this.listeners.clear();
+  }
+
+  #emit(event,broadcast=true){
+    for(const handler of this.listeners){
+      try{handler(event);}catch(error){console.error(error);}
+    }
+    if(broadcast)this.channel?.postMessage({source:'tovati-v2',event});
+  }
+
   async list(collection,query={}){
     const db=await openDb();
     const tx=db.transaction(STORE,'readonly');
@@ -191,6 +218,13 @@ export class LocalDataSource{
       tx.oncomplete=()=>{
         if(settled)return;
         settled=true;
+        this.#emit({
+          type:'upsert',
+          collection,
+          id,
+          version:saved?.version??null,
+          at:Date.now()
+        });
         resolve(saved);
       };
       tx.onerror=()=>{
@@ -217,6 +251,7 @@ export class LocalDataSource{
       count++;
     }
     await waitTx(tx);
+    if(count)this.#emit({type:'bulk-upsert',collection,count,at:Date.now()});
     return {count};
   }
 
@@ -254,6 +289,7 @@ export class LocalDataSource{
     });
 
     await waitTx(tx);
+    this.#emit({type:'replace-collection',collection,count,at:Date.now()});
     return {count};
   }
 
@@ -262,6 +298,7 @@ export class LocalDataSource{
     const tx=db.transaction(STORE,'readwrite');
     tx.objectStore(STORE).delete([collection,String(id)]);
     await waitTx(tx);
+    this.#emit({type:'remove',collection,id:String(id),at:Date.now()});
   }
 }
 
