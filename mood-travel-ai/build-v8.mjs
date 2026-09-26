@@ -4,10 +4,10 @@ import {createHash} from 'node:crypto';
 
 // Mood Travel V20 only. TOVATI root build is untouched.
 // The release snapshot is public-read and backend-write-only; verify integrity before publish.
-const VERSION='20.0.0';
-const EXPECTED_SHA='9bc5d4b4e2c362b4f0e0dbb2325f39dac5c3d7e187af2341cd499c340c8fafb7';
-const EXPECTED_BYTES=1348747;
-const SNAPSHOT='https://txpdbljehqkntdxrpoof.supabase.co/rest/v1/mt_site_releases?version=eq.v20&select=html,sha256,bytes&limit=1';
+const VERSION='21.0.0';
+const EXPECTED_SHA='71db7e73ea1d641010f1b8508747300aa05c66f38a15a5dd0bb1b54a2df7d36d';
+const EXPECTED_BYTES=1353408;
+const SNAPSHOT='https://txpdbljehqkntdxrpoof.supabase.co/rest/v1/mt_site_releases?version=eq.v21&select=html,sha256,bytes&limit=1';
 const PUBLIC_KEY='sb_publishable_ug2_CfqwXNVUoWaVtq-KQA_W7BtaTcS';
 let release,lastError;
 for(let attempt=0;attempt<3;attempt++){
@@ -22,14 +22,14 @@ for(let attempt=0;attempt<3;attempt++){
 if(!release)throw lastError||new Error('Mood snapshot unavailable');
 const html=release.html;
 const sha256=createHash('sha256').update(html,'utf8').digest('hex');
-if(sha256!==EXPECTED_SHA||release.sha256!==EXPECTED_SHA||Buffer.byteLength(html)!==EXPECTED_BYTES)throw new Error('Mood V20 integrity check failed');
-if(!html.includes('content="20.0.0"')||!html.includes('sensory_balcony')||html.includes('<small>תמונת אווירה</small>'))throw new Error('Wrong Mood release');
+if(sha256!==EXPECTED_SHA||release.sha256!==EXPECTED_SHA||Buffer.byteLength(html)!==EXPECTED_BYTES)throw new Error('Mood V21 integrity check failed');
+if(!html.includes('content="21.0.0"')||!html.includes('sensory_balcony')||html.includes('<small>תמונת אווירה</small>'))throw new Error('Wrong Mood release');
 const dest=path.join(process.cwd(),'public','mood-travel-ai');
 await fs.mkdir(dest,{recursive:true});
 await fs.writeFile(path.join(dest,'index.html'),html,'utf8');
 await fs.writeFile(path.join(dest,'version.json'),JSON.stringify({
   version:VERSION,sha256,bytes:EXPECTED_BYTES,
-  unique_category_photos:true,
+  unique_category_photos:true,screen_header_photos:true,real_source_highlights:true,
   repeated_card_images:'suppressed_per_visible_screen',
   image_labels_on_photos:false,
   enlarged_images:true,
@@ -37,4 +37,4 @@ await fs.writeFile(path.join(dest,'version.json'),JSON.stringify({
   curated_counts:{experiences:20,gifts:18,stays:13,ideas:28},
   event_refresh:'existing_daily_database_feed'
 },null,2)+'\n');
-console.log('Mood Travel AI V20',EXPECTED_BYTES,'bytes',sha256);
+console.log('Mood Travel AI V21',EXPECTED_BYTES,'bytes',sha256);
