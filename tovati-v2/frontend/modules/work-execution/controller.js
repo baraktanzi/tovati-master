@@ -64,6 +64,19 @@ export class WorkExecutionController{
     const summary=required(input.summary||input.text,'סיכום ביצוע');
     if(!input.permitChecked&&!input.permit_checked)throw new Error('יש לאשר שבוצעה בדיקת היתר');
 
+    if(this.source.kind==='company-server'&&typeof this.source.request==='function'){
+      return this.source.request('/work-items/'+encodeURIComponent(workItemId)+'/complete',{
+        method:'POST',
+        headers:{'Idempotency-Key':crypto.randomUUID()},
+        body:JSON.stringify({
+          summary,
+          permitChecked:true,
+          userId:String(input.userId||input.completed_by||''),
+          version:input.version??null
+        })
+      });
+    }
+
     const closure={
       id:workItemId,
       work_item_id:workItemId,
