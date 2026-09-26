@@ -18,12 +18,13 @@ export class OperationsController{
     });
   }
 
-  async changePriority(id,value,targetDate=null,version='*',user=this.getCurrentUser()){
+  async changePriority(id,value,targetDate=null,version=null,user=this.getCurrentUser()){
     if(!canPrioritize(user)) throw new Error('אין הרשאה לתעדוף תפעולי');
     const card=await this.repository.getWorkItem(id);
     if(!card) throw new Error('העבודה לא נמצאה');
     const next=setOperationalPriority(card,value,targetDate);
-    return this.repository.saveWorkItem(next,{version});
+    const expectedVersion=version??card.version??'*';
+    return this.repository.saveWorkItem(next,{version:expectedVersion});
   }
 
   async buildDepartmentBriefing(limit=200){
