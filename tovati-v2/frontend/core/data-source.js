@@ -132,9 +132,42 @@ export class LegacyR24DataSource{
     )===String(id))||null;
   }
 
-  async upsert(){throw new Error('R24 compatibility data source is read-only');}
-  async bulkUpsert(){throw new Error('R24 compatibility data source is read-only');}
-  async remove(){throw new Error('R24 compatibility data source is read-only');}
+  async upsert(collection,entity){
+    const bridge=window.TOVATI_R24_BRIDGE;
+    if(collection==='work-items'){
+      const id=String(entity.id||entity.ref||'');
+      const current=await this.get(collection,id);
+      if(!current) throw new Error('Legacy work item not found');
+      if(String(entity.operational_priority??'')!==String(current.operational_priority??'')
+        || String(entity.planned_for??'')!==String(current.planned_for??'')){
+        return bridge.setOperationalPriority(
+          id,
+          entity.operational_priority??'',
+          entity.planned_for??''
+        );
+      }
+      return current;
+    }
+    if(collection==='assignments'){
+      return bridge.saveAssignment(entity,String(entity.id||''));
+    }
+    throw new Error('Write is not yet migrated for collection: '+collection);
+  }
+
+  async bulkUpsert(collection,items=[]){
+    const saved=[];
+    for(const item of items) saved.push(await this.upsert(collection,item));
+    return {count:saved.length,items:saved};
+  }
+
+  async remove(collection,id,{reason='בוטל במודול החדש'}={}){
+    const bridge=window.TOVATI_R24_BRIDGE;
+    if(collection==='assignments'){
+      bridge.cancelAssignment(id,reason);
+      return null;
+    }
+    throw new Error('Delete is not yet migrated for collection: '+collection);
+  }
 }
 
 export class HttpDataSource{
