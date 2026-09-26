@@ -13,6 +13,12 @@ export class WorkRepository {
   listPmTasks(query={}){ return this.source.list('pm-tasks',query); }
   listAssignments(query={}){ return this.source.list('assignments',query); }
   saveAssignment(item,options={}){ return this.source.upsert('assignments',item,options); }
+  listJsa(query={}){ return this.source.list('jsa',query); }
+  getJsa(id){ return this.source.get('jsa',id); }
+  saveJsa(item,options={}){ return this.source.upsert('jsa',item,options); }
+  listPtp(query={}){ return this.source.list('ptp',query); }
+  getPtp(id){ return this.source.get('ptp',id); }
+  savePtp(item,options={}){ return this.source.upsert('ptp',item,options); }
 
   async loadWorkCard(id){
     const work=await this.getWorkItem(id);
