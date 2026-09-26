@@ -5,6 +5,10 @@ const names=(await fs.readdir('r24_parts')).filter(x=>x.endsWith('.txt')).sort()
 let source='';
 for(const name of names) source+=await fs.readFile('r24_parts/'+name,'utf8');
 
+if(source.includes('supabase.co')||source.includes('cloud-sync.js')){
+  throw new Error('External backend reference detected in local architecture source');
+}
+
 const compatTag='<script src="/architecture-v2/frontend/compat/r24-bridge.js?v=1"></script>';
 const moduleTag='<script type="module" src="/architecture-v2/frontend/bootstrap.js?v=1"></script>';
 if(!source.includes(compatTag)){
