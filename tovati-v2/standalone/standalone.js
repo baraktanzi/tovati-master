@@ -24,16 +24,16 @@ const api={
   work:repository,
   legacy:{bridge:null,revision:()=>0,user:()=>currentUser},
   modules:{
-    dailyMaintenance:new DailyMaintenanceController(repository),
+    dailyMaintenance:new DailyMaintenanceController(repository,{getCurrentUser:()=>currentUser}),
     operations:new OperationsController(repository,{getCurrentUser:()=>currentUser}),
-    departmentPlanning:new DepartmentPlanningController(repository),
+    departmentPlanning:new DepartmentPlanningController(repository,{getCurrentUser:()=>currentUser}),
     preventiveMaintenance:new PreventiveMaintenanceController(repository),
     permitSafety:new PermitSafetyController(repository),
     annualPlans:new AnnualPlansController(source),
     unitOverhauls:new UnitOverhaulsController(source),
     managementDashboard:new ManagementDashboardController(source),
     personalArea:new PersonalAreaController(source),
-    workExecution:new WorkExecutionController(source)
+    workExecution:new WorkExecutionController(source,{getCurrentUser:()=>currentUser})
   }
 };
 
