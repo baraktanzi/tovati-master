@@ -27,12 +27,12 @@ const api={
     dailyMaintenance:new DailyMaintenanceController(repository,{getCurrentUser:()=>currentUser}),
     operations:new OperationsController(repository,{getCurrentUser:()=>currentUser}),
     departmentPlanning:new DepartmentPlanningController(repository,{getCurrentUser:()=>currentUser}),
-    preventiveMaintenance:new PreventiveMaintenanceController(repository),
-    permitSafety:new PermitSafetyController(repository),
-    annualPlans:new AnnualPlansController(source),
-    unitOverhauls:new UnitOverhaulsController(source),
-    managementDashboard:new ManagementDashboardController(source),
-    personalArea:new PersonalAreaController(source),
+    preventiveMaintenance:new PreventiveMaintenanceController(repository,{getCurrentUser:()=>currentUser}),
+    permitSafety:new PermitSafetyController(repository,{getCurrentUser:()=>currentUser}),
+    annualPlans:new AnnualPlansController(source,{getCurrentUser:()=>currentUser}),
+    unitOverhauls:new UnitOverhaulsController(source,{getCurrentUser:()=>currentUser}),
+    managementDashboard:new ManagementDashboardController(source,{getCurrentUser:()=>currentUser}),
+    personalArea:new PersonalAreaController(source,{getCurrentUser:()=>currentUser}),
     workExecution:new WorkExecutionController(source,{getCurrentUser:()=>currentUser})
   }
 };
