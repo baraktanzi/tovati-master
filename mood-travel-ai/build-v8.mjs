@@ -8,10 +8,10 @@ import {createHash} from 'node:crypto';
 // Result images come from supplier image URLs, load lazily, and are deduplicated
 // within each visible screen. Missing/broken pictures have no stock fallback.
 // Catalog entries, supplier URLs, dates and prices are unchanged from V17.
-const VERSION='18.0.0';
-const EXPECTED_SHA='5ea2cf752c1062a0b5c62e1a5ec0e3a3b33b6acce0654a40b1320c6b02743812';
-const EXPECTED_BYTES=295822;
-const SNAPSHOT='https://txpdbljehqkntdxrpoof.supabase.co/rest/v1/mt_site_releases?version=eq.v18&select=html,sha256,bytes&limit=1';
+const VERSION='19.0.0';
+const EXPECTED_SHA='eb0da45a8625675ed0945a4cf558e939c63dd37f31dd6f7860ceed5988d3a515';
+const EXPECTED_BYTES=297981;
+const SNAPSHOT='https://txpdbljehqkntdxrpoof.supabase.co/rest/v1/mt_site_releases?version=eq.v19&select=html,sha256,bytes&limit=1';
 const PUBLIC_KEY='sb_publishable_ug2_CfqwXNVUoWaVtq-KQA_W7BtaTcS';
 let release,lastError;
 for(let attempt=0;attempt<3;attempt++){
@@ -26,10 +26,10 @@ for(let attempt=0;attempt<3;attempt++){
 if(!release)throw lastError||new Error('Mood snapshot unavailable');
 const html=release.html;
 const sha256=createHash('sha256').update(html,'utf8').digest('hex');
-if(sha256!==EXPECTED_SHA||release.sha256!==EXPECTED_SHA||Buffer.byteLength(html)!==EXPECTED_BYTES)throw new Error('Mood V18 integrity check failed');
-if(!html.includes('content="18.0.0"')||!html.includes('class="calm-edition"')||html.includes('id="sensoryRail"'))throw new Error('Wrong Mood release');
+if(sha256!==EXPECTED_SHA||release.sha256!==EXPECTED_SHA||Buffer.byteLength(html)!==EXPECTED_BYTES)throw new Error('Mood V19 integrity check failed');
+if(!html.includes('class="calm-edition"')||!html.includes('לא רק שלוש אפשרויות')||html.includes('id="sensoryRail"'))throw new Error('Wrong Mood release');
 const dest=path.join(process.cwd(),'public','mood-travel-ai');
 await fs.mkdir(dest,{recursive:true});
 await fs.writeFile(path.join(dest,'index.html'),html,'utf8');
 await fs.writeFile(path.join(dest,'version.json'),JSON.stringify({version:VERSION,sha256,bytes:EXPECTED_BYTES,decorative_photographs:1,logo_preserved:true,result_images:'source_only_no_stock_fallback',duplicate_source_images:'suppressed_per_visible_screen',ui_fixture_checks:58,curated_checked:'2026-09-25',curated_counts:{experiences:20,gifts:18,stays:13,ideas:28},catalog_items_added_this_release:0,curated_refresh:'manual_snapshot',event_refresh:'existing_daily_database_feed',release_storage:'public_mood_only_snapshot'},null,2)+'\n');
-console.log('Mood Travel AI V18',EXPECTED_BYTES,'bytes',sha256);
+console.log('Mood Travel AI V19',EXPECTED_BYTES,'bytes',sha256);
