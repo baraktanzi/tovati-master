@@ -37,3 +37,10 @@ realtime.connect();
 window.dispatchEvent(new CustomEvent('tovati:v2-ready',{
   detail:{mode:TOVATI_CONFIG.mode,version:TOVATI_CONFIG.appVersion}
 }));
+
+const previewModule=new URLSearchParams(location.search).get('v2module');
+if(previewModule){
+  import('./preview/module-preview.js')
+    .then(m=>m.mountV2Preview(previewModule,api))
+    .catch(error=>console.error('TOVATI V2 preview failed',error));
+}
