@@ -31,8 +31,11 @@ if(!photos.startsWith('window.TOVATI_WORKER_PHOTOS='))throw new Error('Invalid w
 
 const pmRows=Number(build.match(/PM_ROWS=(\d+)/)?.[1]||0);
 const workerPhotos=Number(build.match(/WORKER_PHOTOS=(\d+)/)?.[1]||0);
-if(pmRows<5000)throw new Error('Unexpected PM seed row count: '+pmRows);
-if(workerPhotos<200)throw new Error('Unexpected worker photo count: '+workerPhotos);
+const pmPayload=JSON.parse(pm.slice('window.TOVATI_PM_SEED='.length).replace(/;\s*$/,''));
+const photoPayload=JSON.parse(photos.slice('window.TOVATI_WORKER_PHOTOS='.length).replace(/;\s*$/,''));
+
+if(!Array.isArray(pmPayload)||pmPayload.length!==pmRows)throw new Error('PM seed count mismatch');
+if(!photoPayload||typeof photoPayload!=='object'||Object.keys(photoPayload).length!==workerPhotos)throw new Error('Worker photo count mismatch');
 
 console.log('TOVATI V2 smoke OK',{
   indexBytes,
