@@ -16,3 +16,6 @@
 .v2-row{border:1px solid #e1eaee;border-radius:12px;padding:10px}.v2-row strong{display:block;margin:4px 0}.v2-assign-form{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.v2-assign-form select{grid-column:1/-1}.v2-assign-form button{grid-column:1/-1}
 .v2-error{background:#fff0ef;color:#9e231d;padding:10px 12px;border-radius:10px;margin-bottom:12px}.v2-empty{padding:24px;text-align:center;color:#698292}
 @media(max-width:760px){.v2-wrap{padding:10px}.v2-columns{grid-template-columns:1fr}.v2-top{padding:10px 12px}.v2-top h1{font-size:17px}.v2-grid{grid-template-columns:1fr}}
+
+.v2-metrics{display:grid;grid-template-columns:repeat(5,minmax(130px,1fr));gap:12px;margin-bottom:16px}.v2-metrics>div{background:#fff;border:1px solid #d7e3e9;border-radius:16px;padding:16px;text-align:center}.v2-metrics b{display:block;font-size:28px;color:#123f62}.v2-metrics span{font-size:13px;color:#637c8c}
+@media(max-width:760px){.v2-metrics{grid-template-columns:repeat(2,1fr)}}
