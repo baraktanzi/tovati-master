@@ -5,6 +5,12 @@ import { RealtimeClient } from './core/realtime-client.js';
 import { DailyMaintenanceController } from './modules/daily-maintenance/controller.js';
 import { OperationsController } from './modules/operations/controller.js';
 import { DepartmentPlanningController } from './modules/department-planning/controller.js';
+import { PreventiveMaintenanceController } from './modules/preventive-maintenance/controller.js';
+import { PermitSafetyController } from './modules/permits-jsa-ptp/controller.js';
+import { AnnualPlansController } from './modules/annual-plans/controller.js';
+import { UnitOverhaulsController } from './modules/unit-overhauls/controller.js';
+import { ManagementDashboardController } from './modules/management-dashboard/controller.js';
+import { PersonalAreaController } from './modules/personal-area/controller.js';
 
 const source=getDataSource();
 const repository=new WorkRepository(source);
@@ -20,7 +26,13 @@ const api={
   modules:{
     dailyMaintenance:new DailyMaintenanceController(repository),
     operations:new OperationsController(repository),
-    departmentPlanning:new DepartmentPlanningController(repository)
+    departmentPlanning:new DepartmentPlanningController(repository),
+    preventiveMaintenance:new PreventiveMaintenanceController(repository),
+    permitSafety:new PermitSafetyController(repository),
+    annualPlans:new AnnualPlansController(source),
+    unitOverhauls:new UnitOverhaulsController(source),
+    managementDashboard:new ManagementDashboardController(source),
+    personalArea:new PersonalAreaController(source)
   },
   legacy:{
     bridge:window.TOVATI_R24_BRIDGE||null,
