@@ -1,5 +1,6 @@
 import { getDataSource } from '../../core/data-source.js';
 import { TOVATI_CONFIG } from '../../config/runtime-config.js';
+import { CAPABILITIES, requireCapability, applyUserScope } from '../../core/authorization.js';
 
 function countBy(rows,key){
   const out={};
@@ -23,9 +24,12 @@ async function allRows(source,collection,query={}){
 }
 
 export class ManagementDashboardController{
-  constructor(source=getDataSource()){this.source=source;}
+  constructor(source=getDataSource(),options={}){this.source=source;this.getCurrentUser=options.getCurrentUser||(()=>window.TOVATI_R24_BRIDGE?.currentUser?.()||null);}
 
   async load(filters={}){
+    const user=this.getCurrentUser();
+    requireCapability(user,CAPABILITIES.DASHBOARD_READ,'אין הרשאה לדשבורד הניהולי');
+    filters=applyUserScope(user,filters);
     if(TOVATI_CONFIG.mode==='company-server'&&typeof this.source.request==='function'){
       const params=new URLSearchParams();
       if(filters.departmentId) params.set('departmentId',filters.departmentId);
