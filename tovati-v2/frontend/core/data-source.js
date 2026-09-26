@@ -118,7 +118,8 @@ export class LegacyR24DataSource{
 
     if(collection==='pm-tasks'){
       rows=rows.filter(x=>query.departmentId?String(x.department_id||'')===String(query.departmentId):true)
-        .filter(x=>query.month?String(x.due_at||'').slice(0,7)===String(query.month):true);
+        .filter(x=>query.month?String(x.due_at||'').slice(0,7)===String(query.month):true)
+        .filter(x=>!q||[x.order_id,x.title,x.asset,x.section,x.plan,x.status].join(' ').toLowerCase().includes(q));
     }
 
     if(collection==='permits'){
