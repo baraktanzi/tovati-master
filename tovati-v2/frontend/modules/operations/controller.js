@@ -9,6 +9,7 @@ export class OperationsController{
   }
 
   loadQueue(filters={}){
+    requireCapability(this.getCurrentUser(),CAPABILITIES.OPERATIONS_PRIORITIZE,'מסך התעדוף זמין לתפעול בלבד');
     return this.repository.listWorkItems({
       offset:Number(filters.offset||0),
       limit:Number(filters.limit||50),
