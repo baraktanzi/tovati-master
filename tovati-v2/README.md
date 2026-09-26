@@ -18,3 +18,7 @@ Switching to the company server is a runtime configuration change plus implement
 - server-contract/ – API and realtime contracts
 - import/ – 15-minute report synchronization design
 - docs/ – deployment and migration guidance
+
+
+## Migration status
+See `docs/MIGRATION_STATUS.md` for migrated modules, bridged write operations, preview query parameters and remaining work.
