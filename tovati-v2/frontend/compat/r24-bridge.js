@@ -180,6 +180,11 @@ window.TOVATI_R24_BRIDGE=Object.freeze({
     return window.TOVATI_PILOT.completeWork(input);
   },
 
+  openWork(ref){
+    if(typeof openRecord!=='function') throw new Error('R24 work viewer is unavailable');
+    return openRecord(String(ref));
+  },
+
   routeWork(input){
     if(!window.TOVATI_PILOT?.saveReview) throw new Error('R24 routing API is unavailable');
     return clone(window.TOVATI_PILOT.saveReview(input));
