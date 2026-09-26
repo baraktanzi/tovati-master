@@ -1,5 +1,5 @@
 export const TOVATI_CONFIG=Object.freeze({
-  mode:'local', // local | company-server
+  mode:'legacy-local', // legacy-local | local | company-server
   apiBase:'/api/v1',
   realtimePath:'/ws',
   realtimeEnabled:false,
