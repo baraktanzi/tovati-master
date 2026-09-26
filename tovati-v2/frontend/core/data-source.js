@@ -125,7 +125,7 @@ export class LocalDataSource{
     this.channel=typeof BroadcastChannel!=='undefined'?new BroadcastChannel(LOCAL_CHANNEL):null;
     this.channel?.addEventListener('message',event=>{
       const msg=event.data;
-      if(msg?.source==='tovati-v2'&&msg.event)this.#emit(msg.event,false);
+      if(msg?.source==='tovati-v2'&&msg.event)this.#emit({...msg.event,remote:true},false);
     });
   }
 
@@ -140,10 +140,11 @@ export class LocalDataSource{
   }
 
   #emit(event,broadcast=true){
+    const delivered={...event,remote:Boolean(event.remote)};
     for(const handler of this.listeners){
-      try{handler(event);}catch(error){console.error(error);}
+      try{handler(delivered);}catch(error){console.error(error);}
     }
-    if(broadcast)this.channel?.postMessage({source:'tovati-v2',event});
+    if(broadcast)this.channel?.postMessage({source:'tovati-v2',event:{...event,remote:false}});
   }
 
   async list(collection,query={}){
