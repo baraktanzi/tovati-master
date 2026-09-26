@@ -65,12 +65,39 @@ export class LocalDataSource{
     const db=await openDb();
     const tx=db.transaction(STORE,'readwrite');
     const store=tx.objectStore(STORE),now=Date.now();
+    let count=0;
     for(const entity of entities){
       if(!entity?.id) continue;
       store.put({collection,id:String(entity.id),updatedAt:now,data:{...entity,id:String(entity.id)}});
+      count++;
     }
     await waitTx(tx);
-    return {count:entities.length};
+    return {count};
+  }
+
+  async replaceCollection(collection,entities=[]){
+    const db=await openDb();
+    const tx=db.transaction(STORE,'readwrite');
+    const store=tx.objectStore(STORE);
+    const index=store.index('by_collection');
+    await new Promise((resolve,reject)=>{
+      const req=index.openCursor(IDBKeyRange.only(collection));
+      req.onsuccess=()=>{
+        const cursor=req.result;
+        if(!cursor){resolve();return;}
+        cursor.delete();cursor.continue();
+      };
+      req.onerror=()=>reject(req.error);
+    });
+    const now=Date.now();
+    let count=0;
+    for(const entity of entities){
+      if(!entity?.id) continue;
+      store.put({collection,id:String(entity.id),updatedAt:now,data:{...entity,id:String(entity.id)}});
+      count++;
+    }
+    await waitTx(tx);
+    return {count};
   }
 
   async remove(collection,id){
