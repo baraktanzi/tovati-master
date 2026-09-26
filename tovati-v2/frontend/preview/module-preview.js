@@ -1,11 +1,13 @@
 import { PagedWorkList } from '../components/paged-work-list.js';
+import { DayPlanner } from '../components/day-planner.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const opLabel={immediate:'מיידי',today:'להיום',tomorrow:'למחר',night:'לילה בלבד','':'ממתין לתעדוף'};
 
 function shell(title){
   for(const href of [
     '/architecture-v2/frontend/preview/module-preview.css?v=2',
-    '/architecture-v2/frontend/components/work-card.css?v=1'
+    '/architecture-v2/frontend/components/work-card.css?v=1',
+    '/architecture-v2/frontend/components/day-planner.css?v=1'
   ]){
     if(document.querySelector('link[href="'+href+'"]')) continue;
     const link=document.createElement('link');
@@ -109,38 +111,92 @@ async function mountOperations(root,api){
 async function mountPlanning(root,api){
   const body=root.querySelector('#v2Body');
   const today=new Date().toISOString().slice(0,10);
-  body.innerHTML=`<div class="v2-toolbar"><input type="date" value="${today}" data-date><input type="search" placeholder="חיפוש עבודה לתכנון" data-search><button data-load>רענון</button></div><div id="v2Results"></div>`;
+  body.innerHTML=`<div class="v2-toolbar">
+    <input type="date" value="${today}" data-date>
+    <input type="search" placeholder="חיפוש עבודה לתכנון" data-search>
+    <button data-load>רענון</button>
+  </div>
+  <div id="v2AssignHost"></div>
+  <div id="v2Planner"></div>`;
+
+  const plannerHost=body.querySelector('#v2Planner');
+  const assignHost=body.querySelector('#v2AssignHost');
+  let workers=[];
+
+  const planner=new DayPlanner({
+    host:plannerHost,
+    onAssignRequest:request=>openAssignForm(request),
+    onOpenAssignment:item=>{
+      assignHost.innerHTML=`<div class="v2-assignment-info"><strong>${esc(item.snapshot?.title||item.workRef||'שיבוץ')}</strong><span>${esc(item.start)}–${esc(item.end)}</span><small>${esc((item.workerNames||item.workerIds||[]).join(' · '))}</small></div>`;
+      assignHost.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }
+  });
+
+  function openAssignForm(request){
+    const options=workers.map(w=>`<option value="${esc(w.id)}">${esc(w.name||w.display_name||w.id)} · ${esc(w.section||'')}</option>`).join('');
+    assignHost.innerHTML=`<form class="v2-planner-sheet" id="v2AssignForm">
+      <div class="v2-planner-sheet-head"><div><small>שיבוץ עבודה</small><strong>${esc(request.workItem.title||'')}</strong></div><button type="button" data-close>×</button></div>
+      <div class="v2-planner-sheet-grid">
+        <label><span>תאריך</span><input name="date" type="date" value="${esc(request.date)}" required></label>
+        <label><span>התחלה</span><input name="start" type="time" value="${esc(request.start)}" required></label>
+        <label><span>סיום</span><input name="end" type="time" value="${esc(request.end)}" required></label>
+        <label class="wide"><span>עובד</span><select name="worker" required><option value="">בחר עובד</option>${options}</select></label>
+        <label class="wide"><span>הערה</span><input name="note" maxlength="500" placeholder="הערת תכנון"></label>
+      </div>
+      <div class="v2-planner-sheet-actions"><button type="button" data-close>ביטול</button><button type="submit">שמירת שיבוץ</button></div>
+    </form>`;
+    assignHost.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>assignHost.replaceChildren());
+    assignHost.querySelector('#v2AssignForm').onsubmit=async event=>{
+      event.preventDefault();
+      showError(root,'');
+      const fd=new FormData(event.currentTarget);
+      const submit=event.currentTarget.querySelector('[type=submit]');
+      submit.disabled=true;
+      try{
+        await api.modules.departmentPlanning.createAssignment({
+          workItemId:request.workItem.id,
+          date:fd.get('date'),
+          start:fd.get('start'),
+          end:fd.get('end'),
+          workerIds:[fd.get('worker')].filter(Boolean),
+          note:fd.get('note')||''
+        });
+        assignHost.replaceChildren();
+        await load();
+      }catch(e){showError(root,e);}
+      finally{if(submit.isConnected)submit.disabled=false;}
+    };
+  }
 
   const load=async()=>{
     showError(root,'');
     try{
       const date=body.querySelector('[data-date]').value;
-      const [day,users]=await Promise.all([
-        api.modules.departmentPlanning.loadDay({date,search:body.querySelector('[data-search]').value,limit:50}),
+      const [day,userPage]=await Promise.all([
+        api.modules.departmentPlanning.loadDay({
+          date,
+          search:body.querySelector('[data-search]').value,
+          limit:80
+        }),
         api.data.list('users',{offset:0,limit:200,active:true})
       ]);
-      const userOptions=users.items.filter(u=>u.active!==false).map(u=>`<option value="${esc(u.id)}">${esc(u.name||u.display_name||u.id)}</option>`).join('');
-      const assignments=day.assignments.length?day.assignments.map(a=>`<div class="v2-row"><bdi>${esc(a.start)}–${esc(a.end)}</bdi><strong>${esc(a.snapshot?.title||a.workRef)}</strong><small>${esc((a.workerIds||[]).join(' · '))}</small></div>`).join(''):'<div class="v2-empty">אין שיבוצים ליום זה</div>';
-      const candidates=day.candidates.length?day.candidates.map(x=>`<div class="v2-row" data-work="${esc(x.id)}"><span class="v2-code"><bdi>${esc(x.orderId||x.notificationId||x.id)}</bdi></span><strong>${esc(x.title)}</strong><small>${esc([x.departmentId,x.section].filter(Boolean).join(' · '))}</small><form class="v2-assign-form"><input name="start" type="time" value="08:00" required><input name="end" type="time" value="10:00" required><select name="worker" required><option value="">בחר עובד</option>${userOptions}</select><button type="submit">שבץ לעבודה</button></form></div>`).join(''):'<div class="v2-empty">אין עבודות ממתינות לשיבוץ</div>';
-      body.querySelector('#v2Results').innerHTML=`<div class="v2-columns"><section class="v2-panel"><h2>עבודות לתכנון · ${day.candidateTotal}</h2><div class="v2-list">${candidates}</div></section><section class="v2-panel"><h2>שיבוצים ליום</h2><div class="v2-list">${assignments}</div></section></div>`;
-      body.querySelectorAll('.v2-assign-form').forEach(form=>form.onsubmit=async e=>{
-        e.preventDefault();
-        const row=form.closest('[data-work]'),fd=new FormData(form);
-        try{
-          await api.modules.departmentPlanning.createAssignment({
-            workItemId:row.dataset.work,date,
-            start:fd.get('start'),end:fd.get('end'),
-            workerIds:[fd.get('worker')].filter(Boolean)
-          });
-          await load();
-        }catch(err){showError(root,err);}
+      workers=userPage.items.filter(u=>u.active!==false&&(!u.branch||u.branch==='maintenance'));
+      const workerNames=new Map(workers.map(w=>[String(w.id),w.name||w.display_name||w.id]));
+      planner.setData({
+        ...day,
+        assignments:day.assignments.map(a=>({
+          ...a,
+          workerNames:(a.workerIds||[]).map(id=>workerNames.get(String(id))||String(id))
+        })),
+        workers
       });
     }catch(e){showError(root,e);}
   };
 
   body.querySelector('[data-load]').onclick=load;
   body.querySelector('[data-date]').onchange=load;
-  let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
+  let timer;
+  body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
   await load();
 }
 
