@@ -121,14 +121,79 @@ async function mountPlanning(root,api){
   await load();
 }
 
+async function mountPreventive(root,api){
+  const body=root.querySelector('#v2Body');
+  body.innerHTML=`<div class="v2-toolbar"><input type="search" placeholder="חיפוש פקודה / ציוד / תוכנית" data-search><input type="month" data-month><button data-load>רענון</button></div><div id="v2Results"></div>`;
+  const load=async()=>{
+    showError(root,'');
+    try{
+      const page=await api.modules.preventiveMaintenance.loadPage({
+        search:body.querySelector('[data-search]').value,
+        month:body.querySelector('[data-month]').value,
+        limit:50
+      });
+      body.querySelector('#v2Results').innerHTML=page.items.length?`<div class="v2-grid">${page.items.map(x=>`<article class="v2-card"><div class="v2-card-head"><span class="v2-code"><bdi>${esc(x.orderId||x.id)}</bdi></span><span class="v2-chip">${esc(x.monthState?.label||'')}</span></div><h3>${esc(x.title)}</h3><p>${esc([x.departmentId,x.section,x.asset].filter(Boolean).join(' · '))}</p><p>${esc([x.plan,x.cycle,x.status].filter(Boolean).join(' · '))}</p></article>`).join('')}</div>`:'<div class="v2-empty">אין פקודות תחזוקה מונעת בסינון שנבחר</div>';
+    }catch(e){showError(root,e);}
+  };
+  body.querySelector('[data-load]').onclick=load;
+  body.querySelector('[data-month]').onchange=load;
+  let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
+  await load();
+}
+
+async function mountPermits(root,api){
+  const body=root.querySelector('#v2Body');
+  body.innerHTML=`<div class="v2-toolbar"><input type="search" placeholder="חיפוש היתר / הזמנה / תיאור" data-search><button data-load>רענון</button></div><div id="v2Results"></div>`;
+  const load=async()=>{
+    showError(root,'');
+    try{
+      const page=await api.modules.permitSafety.loadPermits({search:body.querySelector('[data-search]').value,limit:50});
+      body.querySelector('#v2Results').innerHTML=page.items.length?`<div class="v2-grid">${page.items.map(x=>`<article class="v2-card"><div class="v2-card-head"><span class="v2-code"><bdi>${esc(x.id)}</bdi></span><span class="v2-chip">${esc(x.status||'ללא סטטוס')}</span></div><h3>${esc(x.title||'היתר עבודה')}</h3><p>הזמנה <bdi>${esc(x.orderId||'—')}</bdi></p><p>${esc(x.validity?.label||'')}</p><div class="v2-actions"><button data-package="${esc(x.id)}">בדיקת חבילת JSA/PTP</button></div></article>`).join('')}</div>`:'<div class="v2-empty">אין היתרים תואמים</div>';
+      body.querySelectorAll('[data-package]').forEach(btn=>btn.onclick=async()=>{
+        try{
+          const pack=await api.modules.permitSafety.loadPackage({permitId:btn.dataset.package});
+          const missing=pack.status.missing.length?pack.status.missing.join(', '):'אין';
+          alert('מסמכים חסרים: '+missing+'\nאישור אנושי מוסמך נדרש לפני ביצוע.');
+        }catch(e){showError(root,e);}
+      });
+    }catch(e){showError(root,e);}
+  };
+  body.querySelector('[data-load]').onclick=load;
+  let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
+  await load();
+}
+
+async function mountDashboard(root,api){
+  const body=root.querySelector('#v2Body');
+  body.innerHTML='<div id="v2Results"></div>';
+  showError(root,'');
+  try{
+    const data=await api.modules.managementDashboard.load();
+    const k=data.kpis||{};
+    body.querySelector('#v2Results').innerHTML=`<div class="v2-metrics">
+      <div><b>${esc(k.openWork||0)}</b><span>עבודות פתוחות</span></div>
+      <div><b>${esc(k.urgentWork||0)}</b><span>מיידי / להיום</span></div>
+      <div><b>${esc(k.preventiveOverdue||0)}</b><span>מונעת באיחור</span></div>
+      <div><b>${esc(k.expiredPermits||0)}</b><span>היתרים שתוקפם חלף בדוח</span></div>
+      <div><b>${esc(k.activeAssignments||0)}</b><span>שיבוצים פעילים</span></div>
+    </div><section class="v2-panel"><h2>עבודות פתוחות לפי מחלקה</h2><div class="v2-list">${Object.entries(data.byDepartment||{}).map(([k,v])=>`<div class="v2-row"><strong>${esc(k)}</strong><span>${esc(v)}</span></div>`).join('')}</div></section>`;
+  }catch(e){showError(root,e);}
+}
+
 export async function mountV2Preview(moduleId,api){
   const titles={
     'daily-maintenance':'ניהול תחזוקה יומי',
     operations:'תפעול ותעדוף',
-    'department-planning':'תכנון מחלקתי'
+    'department-planning':'תכנון מחלקתי',
+    'preventive-maintenance':'תחזוקה מונעת',
+    'permits-jsa-ptp':'היתרים / JSA / PTP',
+    'management-dashboard':'דשבורד ניהולי'
   };
   const root=shell(titles[moduleId]||'תובתי V2');
   if(moduleId==='operations') return mountOperations(root,api);
   if(moduleId==='department-planning') return mountPlanning(root,api);
+  if(moduleId==='preventive-maintenance') return mountPreventive(root,api);
+  if(moduleId==='permits-jsa-ptp') return mountPermits(root,api);
+  if(moduleId==='management-dashboard') return mountDashboard(root,api);
   return mountDaily(root,api);
 }
