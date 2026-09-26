@@ -339,7 +339,11 @@ export class HttpDataSource{
 let singleton;
 export function getDataSource(){
   if(!singleton){
-    singleton=TOVATI_CONFIG.mode==='company-server'\n      ? new HttpDataSource()\n      : TOVATI_CONFIG.mode==='legacy-local'\n        ? new LegacyR24DataSource()\n        : new LocalDataSource();
+    singleton=TOVATI_CONFIG.mode==='company-server'
+      ? new HttpDataSource()
+      : TOVATI_CONFIG.mode==='legacy-local'
+        ? new LegacyR24DataSource()
+        : new LocalDataSource();
   }
   return singleton;
 }
