@@ -29,6 +29,56 @@ function showError(root,error){
   el.hidden=!error;el.textContent=error?'שגיאה: '+(error.message||error):'';
 }
 
+function objectRows(value={}){
+  const source=value?.raw&&typeof value.raw==='object'?value.raw:value||{};
+  return Object.entries(source)
+    .filter(([,v])=>v!==null&&v!==undefined&&v!==''&&typeof v!=='object')
+    .slice(0,60)
+    .map(([k,v])=>`<div class="v2-detail-field"><b>${esc(k)}</b><span>${esc(v)}</span></div>`)
+    .join('');
+}
+
+async function openLocalWorkDetail(root,api,item,initial='status'){
+  showError(root,'');
+  try{
+    const card=await api.work.loadWorkCard(item.id);
+    if(!card)throw new Error('כרטיס העבודה לא נמצא');
+
+    let dialog=document.getElementById('v2WorkDetailDialog');
+    if(!dialog){
+      dialog=document.createElement('dialog');
+      dialog.id='v2WorkDetailDialog';
+      dialog.className='v2-detail-dialog';
+      document.body.appendChild(dialog);
+    }
+
+    const panes={
+      notification:{label:'הודעה',value:card.notification},
+      order:{label:'הזמנה',value:card.order},
+      permit:{label:'היתר',value:card.permit},
+      status:{label:'סטטוס',value:card.work}
+    };
+    let active=panes[initial]?.value?initial:'status';
+
+    const render=()=>{
+      const pane=panes[active];
+      dialog.innerHTML=`<header class="v2-detail-head"><h2>${esc(card.work?.title||card.work?.description||'כרטיס עבודה')}</h2><button type="button" data-close>×</button></header>
+      <div class="v2-detail-body">
+        <div class="v2-detail-tabs">${Object.entries(panes).map(([key,p])=>`<button type="button" data-tab="${key}" class="${active===key?'active':''}" ${p.value?'':'disabled'}>${p.label}</button>`).join('')}</div>
+        <div class="v2-detail-grid">${pane.value?objectRows(pane.value):'<div class="v2-empty">אין נתונים מקושרים</div>'}</div>
+      </div>`;
+      dialog.querySelector('[data-close]').onclick=()=>dialog.close();
+      dialog.querySelectorAll('[data-tab]').forEach(button=>button.onclick=()=>{
+        active=button.dataset.tab;
+        render();
+      });
+    };
+
+    render();
+    if(!dialog.open)dialog.showModal();
+  }catch(e){showError(root,e);}
+}
+
 function cardHtml(x,withPriority=false){
   const id=esc(x.id),op=esc(x.operational_priority||'');
   return `<article class="v2-card" data-id="${id}" data-op="${op}">
@@ -63,7 +113,7 @@ async function mountDaily(root,api){
       search:body.querySelector('[data-search]').value,
       operationalPriority:body.querySelector('[data-op]').value
     }),
-    onCard:(item)=>{try{api.legacy.bridge?.openWork?.(item.id);}catch(e){showError(root,e);}}
+    onCard:(item,kind)=>openLocalWorkDetail(root,api,item,kind)
   });
 
   const reload=()=>list.reset().catch(e=>showError(root,e));
@@ -89,7 +139,7 @@ async function mountOperations(root,api){
       offset,limit,search:body.querySelector('[data-search]').value
     }),
     cardOptions:()=>({showPriorityActions:true}),
-    onCard:(item)=>{try{api.legacy.bridge?.openWork?.(item.id);}catch(e){showError(root,e);}},
+    onCard:(item,kind)=>openLocalWorkDetail(root,api,item,kind),
     onPriority:async(item,value,button)=>{
       button.disabled=true;
       showError(root,'');
