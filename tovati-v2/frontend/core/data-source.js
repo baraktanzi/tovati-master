@@ -176,6 +176,20 @@ export class LegacyR24DataSource{
       rows=rows.filter(x=>query.status?String(x.status||'')===String(query.status):true);
     }
 
+    if(collection==='work-delays'){
+      rows=rows.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
+        .filter(x=>query.status?String(x.state||x.status||'')===String(query.status):true);
+    }
+
+    if(collection==='time-entries'){
+      rows=rows.filter(x=>query.workItemId?String(x.workRef||x.work_item_id||'')===String(query.workItemId):true)
+        .filter(x=>query.userId?String(x.workerId||x.user_id||'')===String(query.userId):true);
+    }
+
+    if(collection==='work-closures'){
+      rows=rows.filter(x=>query.workItemId?String(x.work_item_id||x.id||'')===String(query.workItemId):true);
+    }
+
     return rows;
   }
 
@@ -210,6 +224,21 @@ export class LegacyR24DataSource{
     }
     if(collection==='assignments'){
       return bridge.saveAssignment(entity,String(entity.id||''));
+    }
+    if(collection==='work-delays'){
+      return bridge.saveDelay(entity,String(entity.id||''));
+    }
+    if(collection==='time-entries'){
+      return bridge.saveTime(entity,String(entity.id||''));
+    }
+    if(collection==='work-closures'){
+      bridge.completeWork({
+        workRef:String(entity.work_item_id||entity.id||''),
+        done:true,
+        permitChecked:Boolean(entity.permit_checked??entity.permitChecked),
+        text:String(entity.summary||entity.text||'')
+      });
+      return entity;
     }
     throw new Error('Write is not yet migrated for collection: '+collection);
   }
