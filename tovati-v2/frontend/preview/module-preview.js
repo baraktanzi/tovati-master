@@ -1,10 +1,16 @@
+import { PagedWorkList } from '../components/paged-work-list.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const opLabel={immediate:'מיידי',today:'להיום',tomorrow:'למחר',night:'לילה בלבד','':'ממתין לתעדוף'};
 
 function shell(title){
-  const link=document.createElement('link');
-  link.rel='stylesheet';link.href='/architecture-v2/frontend/preview/module-preview.css?v=1';
-  document.head.appendChild(link);
+  for(const href of [
+    '/architecture-v2/frontend/preview/module-preview.css?v=2',
+    '/architecture-v2/frontend/components/work-card.css?v=1'
+  ]){
+    if(document.querySelector('link[href="'+href+'"]')) continue;
+    const link=document.createElement('link');
+    link.rel='stylesheet';link.href=href;document.head.appendChild(link);
+  }
 
   const root=document.createElement('div');
   root.id='tovatiV2Preview';
@@ -40,47 +46,64 @@ function cardHtml(x,withPriority=false){
 
 async function mountDaily(root,api){
   const body=root.querySelector('#v2Body');
-  body.innerHTML=`<div class="v2-toolbar"><input type="search" placeholder="חיפוש הודעה / הזמנה / תיאור" data-search><select data-op><option value="">כל התעדופים</option><option value="immediate">מיידי</option><option value="today">להיום</option><option value="tomorrow">למחר</option><option value="night">לילה בלבד</option></select><button data-load>רענון</button></div><div id="v2Results"></div>`;
-  const load=async()=>{
-    showError(root,'');
-    try{
-      const page=await api.modules.dailyMaintenance.loadPage({
-        search:body.querySelector('[data-search]').value,
-        operationalPriority:body.querySelector('[data-op]').value,
-        limit:50
-      });
-      body.querySelector('#v2Results').innerHTML=page.items.length?`<div class="v2-grid">${page.items.map(x=>cardHtml(x,false)).join('')}</div>`:'<div class="v2-empty">אין עבודות תואמות</div>';
-    }catch(e){showError(root,e);}
-  };
-  body.querySelector('[data-load]').onclick=load;
-  body.querySelector('[data-op]').onchange=load;
-  let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
-  await load();
+  body.innerHTML=`<div class="v2-toolbar">
+    <input type="search" placeholder="חיפוש הודעה / הזמנה / תיאור" data-search>
+    <select data-op><option value="">כל התעדופים</option><option value="immediate">מיידי</option><option value="today">להיום</option><option value="tomorrow">למחר</option><option value="night">לילה בלבד</option></select>
+    <button data-load>רענון</button>
+  </div><div id="v2Results" class="tv2-work-list"></div>`;
+
+  const host=body.querySelector('#v2Results');
+  const list=new PagedWorkList({
+    host,
+    pageSize:30,
+    loadPage:({offset,limit})=>api.modules.dailyMaintenance.loadPage({
+      offset,limit,
+      search:body.querySelector('[data-search]').value,
+      operationalPriority:body.querySelector('[data-op]').value
+    }),
+    onCard:(item)=>{try{api.legacy.bridge?.openWork?.(item.id);}catch(e){showError(root,e);}}
+  });
+
+  const reload=()=>list.reset().catch(e=>showError(root,e));
+  body.querySelector('[data-load]').onclick=reload;
+  body.querySelector('[data-op]').onchange=reload;
+  let timer;
+  body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(reload,220);};
+  await reload();
 }
 
 async function mountOperations(root,api){
   const body=root.querySelector('#v2Body');
-  body.innerHTML=`<div class="v2-toolbar"><input type="search" placeholder="חיפוש עבודות לתעדוף" data-search><button data-load>רענון</button></div><div id="v2Results"></div>`;
-  const load=async()=>{
-    showError(root,'');
-    try{
-      const page=await api.modules.operations.loadQueue({search:body.querySelector('[data-search]').value,limit:50});
-      const host=body.querySelector('#v2Results');
-      host.innerHTML=page.items.length?`<div class="v2-grid">${page.items.map(x=>cardHtml(x,true)).join('')}</div>`:'<div class="v2-empty">אין עבודות תואמות</div>';
-      host.querySelectorAll('[data-priority]').forEach(btn=>btn.onclick=async()=>{
-        const card=btn.closest('[data-id]');
-        btn.disabled=true;
-        try{
-          await api.modules.operations.changePriority(card.dataset.id,btn.dataset.priority||'');
-          await load();
-        }catch(e){showError(root,e);}
-        finally{btn.disabled=false;}
-      });
-    }catch(e){showError(root,e);}
-  };
-  body.querySelector('[data-load]').onclick=load;
-  let timer;body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(load,220);};
-  await load();
+  body.innerHTML=`<div class="v2-toolbar">
+    <input type="search" placeholder="חיפוש עבודות לתעדוף" data-search>
+    <button data-load>רענון</button>
+  </div><div id="v2Results" class="tv2-work-list"></div>`;
+
+  const host=body.querySelector('#v2Results');
+  const list=new PagedWorkList({
+    host,
+    pageSize:30,
+    loadPage:({offset,limit})=>api.modules.operations.loadQueue({
+      offset,limit,search:body.querySelector('[data-search]').value
+    }),
+    cardOptions:()=>({showPriorityActions:true}),
+    onCard:(item)=>{try{api.legacy.bridge?.openWork?.(item.id);}catch(e){showError(root,e);}},
+    onPriority:async(item,value,button)=>{
+      button.disabled=true;
+      showError(root,'');
+      try{
+        await api.modules.operations.changePriority(item.id,value);
+        await list.reset();
+      }catch(e){showError(root,e);}
+      finally{button.disabled=false;}
+    }
+  });
+
+  const reload=()=>list.reset().catch(e=>showError(root,e));
+  body.querySelector('[data-load]').onclick=reload;
+  let timer;
+  body.querySelector('[data-search]').oninput=()=>{clearTimeout(timer);timer=setTimeout(reload,220);};
+  await reload();
 }
 
 async function mountPlanning(root,api){
