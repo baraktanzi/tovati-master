@@ -1,0 +1,49 @@
+name: Compressly Android Build
+
+on:
+  push:
+    branches: [ compressly-ci-build ]
+    paths:
+      - 'compressly-ci/**'
+      - '.github/workflows/compressly-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reconstruct project archive
+        shell: bash
+        run: |
+          cat compressly-ci/chunk_*.txt | tr -d '\n\r ' | base64 -d > compressly-ci-min.zip
+          unzip -q compressly-ci-min.zip
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Install Android SDK 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.0'
+
+      - name: Build APK and AAB
+        run: gradle -p compressly_ci_min --no-daemon clean assembleDebug bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: compressly-builds
+          if-no-files-found: error
+          path: |
+            compressly_ci_min/app/build/outputs/apk/debug/*.apk
+            compressly_ci_min/app/build/outputs/bundle/release/*.aab
